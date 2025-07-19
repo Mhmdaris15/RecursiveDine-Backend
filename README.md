@@ -1,187 +1,87 @@
-## Development Commands
+## RecursiveDine API
 
-### Setup
-```bash
-# Install dependencies
-go mod download
+This is the backend API for RecursiveDine, a restaurant management system.
 
-# Copy environment file
-cp .env.example .env
+### Features
 
-# Update database credentials in .env file
-# Then run migrations
-go run cmd/migrate/main.go
+- User authentication (JWT)
+- Table management
+- Menu management
+- Order processing
+- QRIS payment integration
+- Real-time kitchen updates (WebSocket)
+- Prometheus monitoring
 
-# Seed initial data
-go run cmd/seed/main.go
-```
+### Getting Started
 
-### Running the application
-```bash
-# Development mode
-go run cmd/api/main.go
+#### Prerequisites
 
-# Build and run
-go build -o bin/api cmd/api/main.go
-./bin/api
-```
+- Go 1.24+
+- Docker & Docker Compose
+- Make
 
-### Testing
-```bash
-# Run all tests
-go test ./...
+#### Setup and Running
 
-# Run tests with coverage
-go test -v -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out -o coverage.html
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd RecursiveDine
+   ```
 
-# Run specific test
-go test -v ./internal/services -run TestAuthService_Register
-```
+2. **Copy the environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+   *Update `.env` with your database credentials.*
 
-### Database Operations
-```bash
-# Run migrations
-go run cmd/migrate/main.go
+3. **Run the development environment:**
+   ```bash
+   make dev
+   ```
+   This command will:
+   - Install dependencies
+   - Run database migrations
+   - Seed the database
+   - Start the API server
 
-# Seed sample data
-go run cmd/seed/main.go
+   The API will be available at `http://localhost:8002`.
 
-# Connect to database
-psql -h localhost -U postgres -d recursive_dine
-```
+### Development
 
-### Docker
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
+The `Makefile` contains all the necessary commands for development.
 
-# Run only database services
-docker-compose up postgres redis
-
-# Stop services
-docker-compose down
-
-# Remove volumes
-docker-compose down -v
-```
+| Command | Description |
+|---|---|
+| `make build` | Build the application binary. |
+| `make run` | Build and run the application. |
+| `make test` | Run all tests. |
+| `make test-coverage` | Run tests and generate an HTML coverage report. |
+| `make clean` | Remove build files and coverage reports. |
+| `make deps` | Tidy and download Go modules. |
+| `make migrate` | Run database migrations. |
+| `make seed` | Seed the database with initial data. |
+| `make setup` | Set up the development environment (deps, migrate, seed). |
+| `make dev` | Run the complete development environment. |
+| `make docker-build` | Build the Docker image. |
+| `make docker-up` | Start the services using Docker Compose. |
+| `make docker-down` | Stop the services. |
+| `make docker-logs` | View the logs of the running services. |
 
 ### API Documentation
+
+The API is documented using Swagger. Once the application is running, you can access the Swagger UI at:
+
+`http://localhost:8002/swagger/index.html`
+
+To generate the Swagger documentation, run:
 ```bash
-# Generate Swagger documentation
 swag init -g cmd/api/main.go
-
-# Access Swagger UI
-# http://localhost:8002/swagger/index.html
 ```
 
-### Linting
-```bash
-# Run linter
-golangci-lint run
+### Default Credentials
 
-# Auto-fix issues
-golangci-lint run --fix
-```
+After seeding the database, you can use these default accounts:
 
-### Production Deployment
-```bash
-# Build production image
-docker build -t recursive-dine-api .
-
-# Run production container
-docker run -p 8002:8002 --env-file .env recursive-dine-api
-```
-
-## API Endpoints
-
-### Authentication
-- `POST /api/v1/auth/register` - Register new user
-- `POST /api/v1/auth/login` - User login
-- `POST /api/v1/auth/refresh` - Refresh access token
-- `POST /api/v1/auth/logout` - User logout
-
-### Tables
-- `GET /api/v1/tables/{qr_code}` - Get table by QR code
-
-### Menu
-- `GET /api/v1/menu` - Get complete menu
-- `GET /api/v1/menu/categories` - Get menu categories
-- `GET /api/v1/menu/items/search?q={query}` - Search menu items
-
-### Orders
-- `POST /api/v1/orders` - Create new order
-- `GET /api/v1/orders` - Get user orders
-- `GET /api/v1/orders/{id}` - Get order details
-- `PATCH /api/v1/orders/{id}/status` - Update order status (staff/admin)
-
-### Payments
-- `POST /api/v1/payments/qris` - Initiate QRIS payment
-- `POST /api/v1/payments/verify` - Verify payment
-- `GET /api/v1/payments/status/{payment_id}` - Get payment status
-
-### Kitchen WebSocket
-- `WS /kitchen/updates?token={jwt_token}` - Real-time kitchen updates
-
-### Monitoring
-- `GET /metrics` - Prometheus metrics
-- `GET /health` - Health check
-
-## Environment Variables
-
-Required environment variables:
-
-- `DB_HOST` - Database host
-- `DB_PORT` - Database port
-- `DB_USER` - Database username
-- `DB_PASSWORD` - Database password
-- `DB_NAME` - Database name
-- `JWT_SECRET` - JWT secret key
-- `REDIS_HOST` - Redis host
-- `REDIS_PORT` - Redis port
-- `QRIS_MERCHANT_ID` - QRIS merchant ID
-- `QRIS_SECRET_KEY` - QRIS secret key
-
-## Security Features
-
-- JWT authentication with refresh tokens
-- Role-based access control
-- Rate limiting (100 requests/minute/IP)
-- CORS configuration
-- Input validation
-- SQL injection prevention
-- Password hashing with bcrypt
-- Secure headers middleware
-
-## Performance Optimizations
-
-- Database connection pooling
-- Redis caching
-- Optimized database queries with indexes
-- Structured logging
-- Prometheus metrics collection
-- WebSocket for real-time updates
-
-## Testing Strategy
-
-- Unit tests for all services
-- Integration tests for API endpoints
-- Mock repositories for testing
-- Test database setup
-- Coverage reporting
-
-## Deployment
-
-The application is containerized and can be deployed using:
-
-1. **Docker Compose** (development)
-2. **Kubernetes** (production)
-3. **Cloud services** (AWS, GCP, Azure)
-
-## Monitoring
-
-- Prometheus metrics collection
-- Grafana dashboards
-- Structured logging with logrus
-- Health check endpoints
-- Error tracking and monitoring
+- **Admin**: `admin` / `admin123`
+- **Staff**: `staff1` / `staff123`
+- **Customer**: `customer1` / `customer123`
