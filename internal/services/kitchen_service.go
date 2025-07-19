@@ -50,10 +50,6 @@ func (s *KitchenService) AddClient(conn *websocket.Conn) {
 		return
 	}
 
-	update := KitchenUpdate{
-		Type: "initial_orders",
-	}
-
 	data, err := json.Marshal(map[string]interface{}{
 		"type":   "initial_orders",
 		"orders": orders,

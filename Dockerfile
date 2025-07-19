@@ -1,4 +1,7 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.21-alpine AS builder
+
+# Install git for go modules
+RUN apk add --no-cache git
 
 WORKDIR /app
 
@@ -7,6 +10,7 @@ COPY go.mod go.sum ./
 
 # Download dependencies
 RUN go mod download
+RUN go mod verify
 
 # Copy the source code
 COPY . .
