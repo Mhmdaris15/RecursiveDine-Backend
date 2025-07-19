@@ -44,7 +44,7 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		ServerPort:  getEnv("SERVER_PORT", "8080"),
+		ServerPort:  getEnv("SERVER_PORT", "8002"),
 		Environment: getEnv("ENVIRONMENT", "development"),
 
 		DBHost:     getEnv("DB_HOST", "localhost"),

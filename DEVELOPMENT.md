@@ -72,7 +72,7 @@ docker-compose down -v
 swag init -g cmd/api/main.go
 
 # Access Swagger UI
-# http://localhost:8080/swagger/index.html
+# http://localhost:8002/swagger/index.html
 ```
 
 ### Linting
@@ -90,7 +90,7 @@ golangci-lint run --fix
 docker build -t recursive-dine-api .
 
 # Run production container
-docker run -p 8080:8080 --env-file .env recursive-dine-api
+docker run -p 8002:8002 --env-file .env recursive-dine-api
 ```
 
 ## Installation Requirements
@@ -132,8 +132,8 @@ go run cmd/api/main.go
 ```
 
 5. **Test the API**:
-   - Health check: `http://localhost:8080/health`
-   - API documentation: `http://localhost:8080/swagger/index.html`
+   - Health check: `http://localhost:8002/health`
+   - API documentation: `http://localhost:8002/swagger/index.html`
 
 ## Default Credentials
 
@@ -154,11 +154,11 @@ You can use tools like:
 Example API calls:
 ```powershell
 # Register new user
-curl -X POST http://localhost:8080/api/v1/auth/register -H "Content-Type: application/json" -d '{"username":"testuser","email":"test@example.com","password":"password123"}'
+curl -X POST http://localhost:8002/api/v1/auth/register -H "Content-Type: application/json" -d '{"username":"testuser","email":"test@example.com","password":"password123"}'
 
 # Get menu
-curl http://localhost:8080/api/v1/menu
+curl http://localhost:8002/api/v1/menu
 
 # Get table info
-curl http://localhost:8080/api/v1/tables/QR001
+curl http://localhost:8002/api/v1/tables/QR001
 ```

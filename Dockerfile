@@ -32,7 +32,7 @@ COPY --from=builder /app/main .
 COPY --from=builder /app/.env .
 
 # Expose port
-EXPOSE 8080
+EXPOSE 8002
 
 # Command to run the executable
 CMD ["./main"]

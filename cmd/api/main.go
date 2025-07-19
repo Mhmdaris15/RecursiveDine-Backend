@@ -27,7 +27,7 @@ import (
 // @title RecursiveDine API
 // @version 1.0
 // @description A secure restaurant ordering system API
-// @host localhost:8080
+// @host localhost:8002
 // @BasePath /api/v1
 // @securityDefinitions.apikey BearerAuth
 // @in header

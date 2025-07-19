@@ -72,7 +72,7 @@ docker-compose down -v
 swag init -g cmd/api/main.go
 
 # Access Swagger UI
-# http://localhost:8080/swagger/index.html
+# http://localhost:8002/swagger/index.html
 ```
 
 ### Linting
@@ -90,7 +90,7 @@ golangci-lint run --fix
 docker build -t recursive-dine-api .
 
 # Run production container
-docker run -p 8080:8080 --env-file .env recursive-dine-api
+docker run -p 8002:8002 --env-file .env recursive-dine-api
 ```
 
 ## API Endpoints

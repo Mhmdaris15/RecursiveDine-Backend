@@ -13,7 +13,7 @@ func CORS() gin.HandlerFunc {
 		// In production, you should maintain a whitelist of allowed origins
 		allowedOrigins := []string{
 			"http://localhost:3000",
-			"http://localhost:8080",
+			"http://localhost:8002",
 			"https://your-frontend-domain.com",
 		}
 
