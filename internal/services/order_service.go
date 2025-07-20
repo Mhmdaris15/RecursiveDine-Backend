@@ -183,3 +183,91 @@ func (s *OrderService) validateStatusTransition(currentStatus, newStatus reposit
 
 	return fmt.Errorf("invalid status transition from %s to %s", currentStatus, newStatus)
 }
+
+// Admin/Staff order management functions
+
+func (s *OrderService) GetAllOrdersAdmin(page, limit int, status string) ([]*repositories.Order, int64, error) {
+	offset := (page - 1) * limit
+	return s.orderRepo.GetAllOrdersPaginated(offset, limit, status)
+}
+
+func (s *OrderService) GetOrderByIDAdmin(id uint) (*repositories.Order, error) {
+	return s.orderRepo.GetByIDWithDetails(id)
+}
+
+func (s *OrderService) UpdateOrderStatusAdmin(id uint, status string) (*repositories.Order, error) {
+	// Convert string status to OrderStatus enum
+	var orderStatus repositories.OrderStatus
+	switch status {
+	case "pending":
+		orderStatus = repositories.OrderStatusPending
+	case "confirmed":
+		orderStatus = repositories.OrderStatusConfirmed
+	case "preparing":
+		orderStatus = repositories.OrderStatusPreparing
+	case "ready":
+		orderStatus = repositories.OrderStatusReady
+	case "served":
+		orderStatus = repositories.OrderStatusServed
+	case "cancelled":
+		orderStatus = repositories.OrderStatusCancelled
+	default:
+		return nil, errors.New("invalid order status")
+	}
+
+	if err := s.orderRepo.UpdateStatus(id, orderStatus); err != nil {
+		return nil, err
+	}
+
+	return s.orderRepo.GetByID(id)
+}
+
+func (s *OrderService) DeleteOrder(id uint) error {
+	return s.orderRepo.SoftDelete(id)
+}
+
+func (s *OrderService) GetOrderStatistics(from, to string) (map[string]interface{}, error) {
+	return s.orderRepo.GetOrderStatistics(from, to)
+}
+
+func (s *OrderService) GetDailyRevenue(from, to string) (map[string]interface{}, error) {
+	return s.orderRepo.GetDailyRevenue(from, to)
+}
+
+func (s *OrderService) UpdateOrderItems(orderID uint, items []repositories.OrderItem) (*repositories.Order, error) {
+	// Check if order is in pending status
+	order, err := s.orderRepo.GetByID(orderID)
+	if err != nil {
+		return nil, err
+	}
+
+	if order.Status != repositories.OrderStatusPending {
+		return nil, fmt.Errorf("can only update items for pending orders")
+	}
+
+	// Calculate new total
+	var total float64
+	for i, item := range items {
+		menuItem, err := s.menuRepo.GetMenuItemByID(item.MenuItemID)
+		if err != nil {
+			return nil, fmt.Errorf("menu item not found: %d", item.MenuItemID)
+		}
+		total += menuItem.Price * float64(item.Quantity)
+		items[i].UnitPrice = menuItem.Price
+		items[i].TotalPrice = menuItem.Price * float64(item.Quantity)
+		items[i].OrderID = orderID
+	}
+
+	// Update order items and total
+	if err := s.orderRepo.UpdateOrderItems(orderID, items); err != nil {
+		return nil, err
+	}
+
+	// Update total amount
+	order.TotalAmount = total
+	if err := s.orderRepo.UpdateOrder(order); err != nil {
+		return nil, err
+	}
+
+	return s.orderRepo.GetByIDWithDetails(orderID)
+}

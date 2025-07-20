@@ -198,3 +198,184 @@ func (s *PaymentService) RefundPayment(paymentID uint, reason string) error {
 
 	return nil
 }
+
+func (s *PaymentService) ProcessCashPayment(orderID uint, amountPaid, changeAmount float64) error {
+	// Get order details
+	order, err := s.orderRepo.GetByID(orderID)
+	if err != nil {
+		return errors.New("order not found")
+	}
+
+	// Check if order is in valid status for payment
+	if order.Status != repositories.OrderStatusPending {
+		return errors.New("order is not pending payment")
+	}
+
+	// Check if payment already exists
+	if existingPayment, err := s.paymentRepo.GetByOrderID(orderID); err == nil {
+		if existingPayment.Status == repositories.PaymentStatusCompleted {
+			return errors.New("order already paid")
+		}
+	}
+
+	// Validate payment amount
+	if amountPaid < order.TotalAmount {
+		return errors.New("insufficient payment amount")
+	}
+
+	// Generate transaction ID
+	transactionID, err := s.generateTransactionID()
+	if err != nil {
+		return errors.New("failed to generate transaction ID")
+	}
+
+	// Create payment record
+	payment := &repositories.Payment{
+		OrderID:       orderID,
+		Method:        repositories.PaymentMethodCash,
+		Status:        repositories.PaymentStatusCompleted,
+		Amount:        order.TotalAmount,
+		TransactionID: transactionID,
+	}
+
+	if err := s.paymentRepo.Create(payment); err != nil {
+		return errors.New("failed to create payment record")
+	}
+
+	// Update order status
+	if err := s.orderRepo.UpdateStatus(orderID, repositories.OrderStatusConfirmed); err != nil {
+		return errors.New("failed to update order status")
+	}
+
+	return nil
+}
+
+// Admin/Cashier payment management functions
+
+func (s *PaymentService) GetAllPayments(page, limit int, status, method string) ([]*repositories.Payment, int64, error) {
+	offset := (page - 1) * limit
+	return s.paymentRepo.GetAllPaymentsPaginated(offset, limit, status, method)
+}
+
+func (s *PaymentService) GetPaymentByIDAdmin(id uint) (*repositories.Payment, error) {
+	return s.paymentRepo.GetByIDWithDetails(id)
+}
+
+func (s *PaymentService) UpdatePaymentStatus(id uint, status string) (*repositories.Payment, error) {
+	payment, err := s.paymentRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert string status to PaymentStatus enum
+	var paymentStatus repositories.PaymentStatus
+	switch status {
+	case "pending":
+		paymentStatus = repositories.PaymentStatusPending
+	case "completed":
+		paymentStatus = repositories.PaymentStatusCompleted
+	case "failed":
+		paymentStatus = repositories.PaymentStatusFailed
+	case "refunded":
+		paymentStatus = repositories.PaymentStatusRefunded
+	case "cancelled":
+		paymentStatus = repositories.PaymentStatusCancelled
+	default:
+		return nil, fmt.Errorf("invalid payment status")
+	}
+
+	payment.Status = paymentStatus
+	if err := s.paymentRepo.Update(payment); err != nil {
+		return nil, err
+	}
+
+	return payment, nil
+}
+
+func (s *PaymentService) ProcessRefund(paymentID uint, amount float64, reason string) (*repositories.Payment, error) {
+	payment, err := s.paymentRepo.GetByID(paymentID)
+	if err != nil {
+		return nil, err
+	}
+
+	if payment.Status != repositories.PaymentStatusCompleted {
+		return nil, fmt.Errorf("can only refund completed payments")
+	}
+
+	if amount > payment.Amount {
+		return nil, fmt.Errorf("refund amount cannot exceed original payment amount")
+	}
+
+	// Create refund record
+	refund := &repositories.Payment{
+		OrderID:           payment.OrderID,
+		Amount:            -amount, // Negative amount for refund
+		Method:            payment.Method,
+		Status:            repositories.PaymentStatusCompleted,
+		TransactionID:     fmt.Sprintf("REFUND-%s", payment.TransactionID),
+	}
+
+	if err := s.paymentRepo.Create(refund); err != nil {
+		return nil, err
+	}
+
+	// Update original payment status if full refund
+	if amount == payment.Amount {
+		payment.Status = repositories.PaymentStatusRefunded
+		if err := s.paymentRepo.Update(payment); err != nil {
+			return nil, err
+		}
+	}
+
+	return refund, nil
+}
+
+func (s *PaymentService) GetPaymentStatistics(from, to, method string) (map[string]interface{}, error) {
+	return s.paymentRepo.GetPaymentStatistics(from, to)
+}
+
+func (s *PaymentService) GetDailyRevenueByPayment(from, to string) (map[string]interface{}, error) {
+	return s.paymentRepo.GetDailyRevenueByPayment(from, to)
+}
+
+func (s *PaymentService) ReconcileCashPayments(cashierID uint, actualAmount, expectedAmount float64, shiftStart, shiftEnd, notes string) (map[string]interface{}, error) {
+	// Get cash payments for the shift period
+	cashPayments, err := s.paymentRepo.GetCashPaymentsByPeriod(cashierID, shiftStart, shiftEnd)
+	if err != nil {
+		return nil, err
+	}
+
+	var calculatedTotal float64
+	for _, payment := range cashPayments {
+		if payment.Amount > 0 { // Exclude refunds
+			calculatedTotal += payment.Amount
+		}
+	}
+
+	difference := actualAmount - calculatedTotal
+
+	// Create reconciliation record
+	reconciliation := map[string]interface{}{
+		"cashier_id":          cashierID,
+		"shift_start":         shiftStart,
+		"shift_end":           shiftEnd,
+		"expected_amount":     expectedAmount,
+		"calculated_amount":   calculatedTotal,
+		"actual_amount":       actualAmount,
+		"difference":          difference,
+		"payment_count":       len(cashPayments),
+		"notes":               notes,
+		"reconciliation_time": time.Now(),
+	}
+
+	// Store reconciliation record
+	if err := s.paymentRepo.CreateReconciliation(reconciliation); err != nil {
+		return nil, err
+	}
+
+	return reconciliation, nil
+}
+
+func (s *PaymentService) DeletePayment(id uint) error {
+	return s.paymentRepo.SoftDelete(id)
+}

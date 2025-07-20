@@ -105,6 +105,10 @@ func (r *MenuRepository) GetMenuItemsByIDs(ids []uint) ([]MenuItem, error) {
 	return items, err
 }
 
+func (r *MenuRepository) UpdateMenuItemAvailability(id uint, available bool) error {
+	return r.db.Model(&MenuItem{}).Where("id = ?", id).Update("is_available", available).Error
+}
+
 func (r *MenuRepository) GetCompleteMenu() ([]MenuCategory, error) {
 	var categories []MenuCategory
 	err := r.db.Where("is_active = ?", true).

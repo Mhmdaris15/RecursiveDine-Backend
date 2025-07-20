@@ -70,3 +70,12 @@ func (r *TableRepository) IsNumberExists(number int) (bool, error) {
 	err := r.db.Model(&Table{}).Where("number = ?", number).Count(&count).Error
 	return count > 0, err
 }
+
+func (r *TableRepository) GetAll(limit, offset int) ([]Table, error) {
+	var tables []Table
+	err := r.db.Order("number ASC").
+		Limit(limit).
+		Offset(offset).
+		Find(&tables).Error
+	return tables, err
+}

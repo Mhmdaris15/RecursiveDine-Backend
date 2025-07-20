@@ -11,6 +11,7 @@ type UserRole string
 const (
 	RoleCustomer UserRole = "customer"
 	RoleStaff    UserRole = "staff"
+	RoleCashier  UserRole = "cashier"
 	RoleAdmin    UserRole = "admin"
 )
 
@@ -116,6 +117,7 @@ const (
 	PaymentStatusCompleted PaymentStatus = "completed"
 	PaymentStatusFailed    PaymentStatus = "failed"
 	PaymentStatusRefunded  PaymentStatus = "refunded"
+	PaymentStatusCancelled PaymentStatus = "cancelled"
 )
 
 type PaymentMethod string

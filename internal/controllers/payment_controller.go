@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"recursiveDine/internal/services"
 
@@ -159,4 +160,118 @@ func (ctrl *PaymentController) PaymentWebhook(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Webhook processed successfully"})
+}
+
+// @Summary Process cash payment
+// @Description Process cash payment for an order (cashier only)
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body map[string]interface{} true "Cash payment request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Router /payments/cash [post]
+func (ctrl *PaymentController) ProcessCashPayment(c *gin.Context) {
+	var req struct {
+		OrderID      uint    `json:"order_id" binding:"required"`
+		AmountPaid   float64 `json:"amount_paid" binding:"required,gt=0"`
+		ChangeAmount float64 `json:"change_amount"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := ctrl.paymentService.ProcessCashPayment(req.OrderID, req.AmountPaid, req.ChangeAmount); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Cash payment processed successfully"})
+}
+
+// @Summary Refund payment
+// @Description Refund a payment (admin/cashier only)
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param payment_id path int true "Payment ID"
+// @Param request body map[string]string true "Refund request"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Router /payments/{payment_id}/refund [post]
+func (ctrl *PaymentController) RefundPayment(c *gin.Context) {
+	paymentID, err := strconv.ParseUint(c.Param("payment_id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payment ID"})
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := ctrl.paymentService.RefundPayment(uint(paymentID), req.Reason); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Payment refunded successfully"})
+}
+
+// @Summary Get all payments
+// @Description Get all payments with pagination (admin/cashier only)
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Items per page (default: 10)"
+// @Param status query string false "Payment status filter"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /payments [get]
+func (ctrl *PaymentController) GetAllPayments(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	status := c.Query("status")
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	method := c.Query("method")
+
+	payments, total, err := ctrl.paymentService.GetAllPayments(page, limit, status, method)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"payments":    payments,
+		"total":       total,
+		"page":        page,
+		"limit":       limit,
+		"status":      status,
+		"method":      method,
+		"total_pages": (total + int64(limit) - 1) / int64(limit),
+	})
 }

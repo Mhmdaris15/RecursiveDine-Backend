@@ -100,3 +100,8 @@ func (s *TableService) SetTableAvailability(id uint, available bool) error {
 	table.IsAvailable = available
 	return s.tableRepo.Update(table)
 }
+
+func (s *TableService) GetAllTables(page, limit int) ([]repositories.Table, error) {
+	offset := (page - 1) * limit
+	return s.tableRepo.GetAll(limit, offset)
+}

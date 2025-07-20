@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
+	"recursiveDine/internal/repositories"
 	"recursiveDine/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -136,4 +138,233 @@ func (ctrl *MenuController) GetMenuItemByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, item)
+}
+
+// CRUD operations for categories (Admin only)
+
+// @Summary Create menu category
+// @Description Create a new menu category (admin only)
+// @Tags menu
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body repositories.MenuCategory true "Category data"
+// @Success 201 {object} repositories.MenuCategory
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Router /admin/menu/categories [post]
+func (ctrl *MenuController) CreateCategory(c *gin.Context) {
+	var category repositories.MenuCategory
+	if err := c.ShouldBindJSON(&category); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := ctrl.menuService.CreateCategory(&category); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, category)
+}
+
+// @Summary Update menu category
+// @Description Update menu category (admin only)
+// @Tags menu
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Category ID"
+// @Param request body repositories.MenuCategory true "Category data"
+// @Success 200 {object} repositories.MenuCategory
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /admin/menu/categories/{id} [put]
+func (ctrl *MenuController) UpdateCategory(c *gin.Context) {
+	categoryID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+		return
+	}
+
+	var category repositories.MenuCategory
+	if err := c.ShouldBindJSON(&category); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	category.ID = uint(categoryID)
+	if err := ctrl.menuService.UpdateCategory(&category); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, category)
+}
+
+// @Summary Delete menu category
+// @Description Soft delete menu category (admin only)
+// @Tags menu
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Category ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /admin/menu/categories/{id} [delete]
+func (ctrl *MenuController) DeleteCategory(c *gin.Context) {
+	categoryID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+		return
+	}
+
+	if err := ctrl.menuService.DeleteCategory(uint(categoryID)); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Category deleted successfully"})
+}
+
+// CRUD operations for menu items (Admin only)
+
+// @Summary Create menu item
+// @Description Create a new menu item (admin only)
+// @Tags menu
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body repositories.MenuItem true "Menu item data"
+// @Success 201 {object} repositories.MenuItem
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Router /admin/menu/items [post]
+func (ctrl *MenuController) CreateMenuItem(c *gin.Context) {
+	var item repositories.MenuItem
+	if err := c.ShouldBindJSON(&item); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := ctrl.menuService.CreateMenuItem(&item); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, item)
+}
+
+// @Summary Update menu item
+// @Description Update menu item (admin only)
+// @Tags menu
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Menu item ID"
+// @Param request body repositories.MenuItem true "Menu item data"
+// @Success 200 {object} repositories.MenuItem
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /admin/menu/items/{id} [put]
+func (ctrl *MenuController) UpdateMenuItem(c *gin.Context) {
+	itemID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid menu item ID"})
+		return
+	}
+
+	var item repositories.MenuItem
+	if err := c.ShouldBindJSON(&item); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	item.ID = uint(itemID)
+	if err := ctrl.menuService.UpdateMenuItem(&item); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, item)
+}
+
+// @Summary Delete menu item
+// @Description Soft delete menu item (admin only)
+// @Tags menu
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Menu item ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /admin/menu/items/{id} [delete]
+func (ctrl *MenuController) DeleteMenuItem(c *gin.Context) {
+	itemID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid menu item ID"})
+		return
+	}
+
+	if err := ctrl.menuService.DeleteMenuItem(uint(itemID)); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Menu item deleted successfully"})
+}
+
+// @Summary Update menu item availability
+// @Description Update menu item availability (admin/staff only)
+// @Tags menu
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Menu item ID"
+// @Param request body map[string]bool true "Availability status"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /admin/menu/items/{id}/availability [patch]
+func (ctrl *MenuController) UpdateMenuItemAvailability(c *gin.Context) {
+	itemID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid menu item ID"})
+		return
+	}
+
+	var req struct {
+		IsAvailable bool `json:"is_available"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := ctrl.menuService.UpdateMenuItemAvailability(uint(itemID), req.IsAvailable); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	status := "unavailable"
+	if req.IsAvailable {
+		status = "available"
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Menu item marked as " + status})
 }

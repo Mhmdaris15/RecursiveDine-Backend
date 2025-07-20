@@ -64,3 +64,18 @@ func (r *UserRepository) IsEmailExists(email string) (bool, error) {
 	err := r.db.Model(&User{}).Where("email = ?", email).Count(&count).Error
 	return count > 0, err
 }
+
+func (r *UserRepository) GetAll(limit, offset int) ([]User, error) {
+	var users []User
+	err := r.db.Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&users).Error
+	
+	// Remove passwords from response
+	for i := range users {
+		users[i].Password = ""
+	}
+	
+	return users, err
+}

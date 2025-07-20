@@ -1,15 +1,15 @@
-package main
+package tests
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"net/http/httptest"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"testing"
 
+	"golang.org/x/crypto/bcrypt"
 	"recursiveDine/internal/config"
 	"recursiveDine/internal/controllers"
 	"recursiveDine/internal/middleware"
@@ -17,40 +17,55 @@ import (
 	"recursiveDine/internal/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/stretchr/testify/suite"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-// @title RecursiveDine API
-// @version 1.0
-// @description A secure restaurant ordering system API
-// @host localhost:8002
-// @BasePath /api/v1
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
-func main() {
-	// Load configuration
+type APITestSuite struct {
+	suite.Suite
+	router      *gin.Engine
+	db          *gorm.DB
+	adminToken  string
+	staffToken  string
+	cashierToken string
+	customerToken string
+}
+
+// SetupSuite runs before all tests
+func (suite *APITestSuite) SetupSuite() {
+	fmt.Println("SetupSuite starting...")
+	
+	// Set test environment
+	os.Setenv("ENVIRONMENT", "test")
+	gin.SetMode(gin.TestMode)
+
+	// Load test configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("Failed to load configuration:", err)
+		fmt.Printf("Failed to load config: %v\n", err)
+		suite.Require().NoError(err)
 	}
+	fmt.Println("Configuration loaded successfully")
 
-	// Initialize database
-	db, err := initDatabase(cfg)
+	// Use test database
+	cfg.DBName = cfg.DBName + "_test"
+	fmt.Printf("Using test database: %s\n", cfg.DBName)
+
+	// Initialize test database
+	suite.db, err = setupTestDatabase(cfg)
 	if err != nil {
-		log.Fatal("Failed to initialize database:", err)
+		fmt.Printf("Failed to setup database: %v\n", err)
+		suite.Require().NoError(err)
 	}
+	fmt.Println("Database setup completed")
 
 	// Initialize repositories
-	userRepo := repositories.NewUserRepository(db)
-	tableRepo := repositories.NewTableRepository(db)
-	menuRepo := repositories.NewMenuRepository(db)
-	orderRepo := repositories.NewOrderRepository(db)
-	paymentRepo := repositories.NewPaymentRepository(db)
+	userRepo := repositories.NewUserRepository(suite.db)
+	tableRepo := repositories.NewTableRepository(suite.db)
+	menuRepo := repositories.NewMenuRepository(suite.db)
+	orderRepo := repositories.NewOrderRepository(suite.db)
+	paymentRepo := repositories.NewPaymentRepository(suite.db)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg)
@@ -68,45 +83,35 @@ func main() {
 	orderController := controllers.NewOrderController(orderService, authService)
 	paymentController := controllers.NewPaymentController(paymentService)
 	kitchenController := controllers.NewKitchenController(kitchenService)
-	
-	// Initialize CRUD controllers
 	userController := controllers.NewUserController(userService)
 	orderManagementController := controllers.NewOrderManagementController(orderService)
 	paymentManagementController := controllers.NewPaymentManagementController(paymentService)
 
-	// Setup router
-	router := setupRouter(cfg, authController, tableController, menuController, orderController, paymentController, kitchenController, userController, orderManagementController, paymentManagementController)
+	// Setup router with all controllers
+	suite.router = setupTestRouter(cfg, authController, tableController, menuController, orderController, paymentController, kitchenController, userController, orderManagementController, paymentManagementController)
 
-	// Start server
-	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%s", cfg.ServerPort),
-		Handler: router,
-	}
-
-	// Graceful shutdown
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Listen: %s\n", err)
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Println("Shutting down server...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
-	}
-
-	log.Println("Server exiting")
+	// Create test users and get tokens
+	suite.createTestUsers(authService)
+	
+	fmt.Println("SetupSuite completed successfully")
 }
 
-func initDatabase(cfg *config.Config) (*gorm.DB, error) {
+// Test method to verify suite is working
+func (suite *APITestSuite) TestSetupWorking() {
+	suite.T().Log("TestSetupWorking called")
+	suite.NotNil(suite.db, "Database should be initialized")
+	suite.NotNil(suite.router, "Router should be initialized")
+}
+
+// TearDownSuite runs after all tests
+func (suite *APITestSuite) TearDownSuite() {
+	// Clean up test database
+	suite.dropTestTables()
+	sqlDB, _ := suite.db.DB()
+	sqlDB.Close()
+}
+
+func setupTestDatabase(cfg *config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Jakarta",
 		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort)
 
@@ -115,7 +120,7 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// Auto-migrate models
+	// Auto-migrate models for testing
 	err = db.AutoMigrate(
 		&repositories.User{},
 		&repositories.Table{},
@@ -132,29 +137,119 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 	return db, nil
 }
 
-func setupRouter(cfg *config.Config, authController *controllers.AuthController, tableController *controllers.TableController, menuController *controllers.MenuController, orderController *controllers.OrderController, paymentController *controllers.PaymentController, kitchenController *controllers.KitchenController, userController *controllers.UserController, orderManagementController *controllers.OrderManagementController, paymentManagementController *controllers.PaymentManagementController) *gin.Engine {
-	if cfg.Environment == "production" {
-		gin.SetMode(gin.ReleaseMode)
+func (suite *APITestSuite) createTestUsers(authService *services.AuthService) {
+	password := "testpassword"
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+
+	// Create admin user
+	adminUser := &repositories.User{
+		Username: "admin",
+		Email:    "admin@test.com",
+		Password: string(hashedPassword),
+		Role:     repositories.RoleAdmin,
+	}
+	suite.db.Create(adminUser)
+
+	// Create staff user
+	staffUser := &repositories.User{
+		Username: "staff",
+		Email:    "staff@test.com",
+		Password: string(hashedPassword),
+		Role:     repositories.RoleStaff,
+	}
+	suite.db.Create(staffUser)
+
+	// Create cashier user
+	cashierUser := &repositories.User{
+		Username: "cashier",
+		Email:    "cashier@test.com",
+		Password: string(hashedPassword),
+		Role:     repositories.RoleCashier,
+	}
+	suite.db.Create(cashierUser)
+
+	// Create customer user
+	customerUser := &repositories.User{
+		Username: "customer",
+		Email:    "customer@test.com",
+		Password: string(hashedPassword),
+		Role:     repositories.RoleCustomer,
+	}
+	suite.db.Create(customerUser)
+
+	// Generate tokens using login
+	adminLogin := &services.LoginRequest{Username: "admin", Password: password}
+	adminAuth, _ := authService.Login(adminLogin)
+	suite.adminToken = adminAuth.AccessToken
+
+	staffLogin := &services.LoginRequest{Username: "staff", Password: password}
+	staffAuth, _ := authService.Login(staffLogin)
+	suite.staffToken = staffAuth.AccessToken
+
+	cashierLogin := &services.LoginRequest{Username: "cashier", Password: password}
+	cashierAuth, _ := authService.Login(cashierLogin)
+	suite.cashierToken = cashierAuth.AccessToken
+
+	customerLogin := &services.LoginRequest{Username: "customer", Password: password}
+	customerAuth, _ := authService.Login(customerLogin)
+	suite.customerToken = customerAuth.AccessToken
+}
+
+func (suite *APITestSuite) dropTestTables() {
+	suite.db.Migrator().DropTable(
+		&repositories.Payment{},
+		&repositories.OrderItem{},
+		&repositories.Order{},
+		&repositories.MenuItem{},
+		&repositories.MenuCategory{},
+		&repositories.Table{},
+		&repositories.User{},
+	)
+}
+
+// Helper methods
+func (suite *APITestSuite) makeRequest(method, url string, body interface{}, token string) *httptest.ResponseRecorder {
+	var bodyReader *bytes.Reader
+	if body != nil {
+		bodyBytes, _ := json.Marshal(body)
+		bodyReader = bytes.NewReader(bodyBytes)
+	} else {
+		bodyReader = bytes.NewReader([]byte{})
 	}
 
+	req, _ := http.NewRequest(method, url, bodyReader)
+	req.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	w := httptest.NewRecorder()
+	suite.router.ServeHTTP(w, req)
+	return w
+}
+
+func (suite *APITestSuite) parseResponse(w *httptest.ResponseRecorder, target interface{}) {
+	err := json.Unmarshal(w.Body.Bytes(), target)
+	suite.Require().NoError(err)
+}
+
+// Run the test suite
+func TestAPITestSuite(t *testing.T) {
+	t.Log("Starting TestAPITestSuite")
+	s := new(APITestSuite)
+	t.Log("Created suite instance")
+	suite.Run(t, s)
+	t.Log("Finished TestAPITestSuite")
+}
+
+// setupTestRouter creates a test router with all endpoints
+func setupTestRouter(cfg *config.Config, authController *controllers.AuthController, tableController *controllers.TableController, menuController *controllers.MenuController, orderController *controllers.OrderController, paymentController *controllers.PaymentController, kitchenController *controllers.KitchenController, userController *controllers.UserController, orderManagementController *controllers.OrderManagementController, paymentManagementController *controllers.PaymentManagementController) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+
 	router := gin.New()
-
-	// Middleware
+	
+	// Use minimal middleware for testing
 	router.Use(gin.Recovery())
-	router.Use(middleware.Logger())
-	router.Use(middleware.CORS())
-	router.Use(middleware.RateLimit())
-
-	// Metrics endpoint
-	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
-
-	// Health check
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
-	})
-
-	// Swagger documentation
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// API routes
 	api := router.Group("/api/v1")
@@ -223,7 +318,7 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 				tables.POST("", tableController.CreateTable)
 				tables.PUT("/:id", tableController.UpdateTable)
 				tables.DELETE("/:id", tableController.DeleteTable)
-				tables.PATCH("/:id/status", tableController.UpdateTableAvailability)
+				tables.PATCH("/:id/availability", tableController.UpdateTableAvailability)
 			}
 
 			// Menu management
@@ -303,9 +398,6 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 			}
 		}
 	}
-
-	// WebSocket for kitchen updates
-	router.GET("/kitchen/updates", middleware.WSAuthMiddleware(), kitchenController.HandleWebSocket)
 
 	return router
 }
