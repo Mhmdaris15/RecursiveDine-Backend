@@ -107,27 +107,36 @@ func main() {
 }
 
 func initDatabase(cfg *config.Config) (*gorm.DB, error) {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Jakarta",
+	fmt.Printf("Debug - Database Config Values:\n")
+	fmt.Printf("Host: '%s'\n", cfg.DBHost)
+	fmt.Printf("User: '%s'\n", cfg.DBUser)
+	fmt.Printf("Password: '%s'\n", cfg.DBPassword)
+	fmt.Printf("Database: '%s'\n", cfg.DBName)
+	fmt.Printf("Port: '%s'\n", cfg.DBPort)
+	
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort)
+	
+	fmt.Printf("DSN: %s\n", dsn)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
 
-	// Auto-migrate models
-	err = db.AutoMigrate(
-		&repositories.User{},
-		&repositories.Table{},
-		&repositories.MenuCategory{},
-		&repositories.MenuItem{},
-		&repositories.Order{},
-		&repositories.OrderItem{},
-		&repositories.Payment{},
-	)
-	if err != nil {
-		return nil, err
-	}
+	// // Auto-migrate models
+	// err = db.AutoMigrate(
+	// 	&repositories.User{},
+	// 	&repositories.Table{},
+	// 	&repositories.MenuCategory{},
+	// 	&repositories.MenuItem{},
+	// 	&repositories.Order{},
+	// 	&repositories.OrderItem{},
+	// 	&repositories.Payment{},
+	// )
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return db, nil
 }
