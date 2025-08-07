@@ -1,6 +1,4 @@
--- Create database
-CREATE DATABASE recursive_dine;
-
+-- Database is already created by Docker environment variables
 -- Connect to the database
 \c recursive_dine;
 
