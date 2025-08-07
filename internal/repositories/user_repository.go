@@ -65,6 +65,20 @@ func (r *UserRepository) IsEmailExists(email string) (bool, error) {
 	return count > 0, err
 }
 
+func (r *UserRepository) IsPhoneExists(phone string) (bool, error) {
+	var count int64
+	err := r.db.Model(&User{}).Where("phone = ?", phone).Count(&count).Error
+	if err != nil {
+		// If phone column doesn't exist, return false (phone is available)
+		if err.Error() == "column \"phone\" does not exist" || 
+		   err.Error() == "pq: column \"phone\" does not exist" {
+			return false, nil
+		}
+		return false, err
+	}
+	return count > 0, err
+}
+
 func (r *UserRepository) GetAll(limit, offset int) ([]User, error) {
 	var users []User
 	err := r.db.Order("created_at DESC").

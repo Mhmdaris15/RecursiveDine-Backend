@@ -17,10 +17,12 @@ const (
 
 type User struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
-	Username  string    `json:"username" gorm:"uniqueIndex;not null" validate:"required,min=3,max=50"`
-	Email     string    `json:"email" gorm:"uniqueIndex;not null" validate:"required,email"`
-	Password  string    `json:"-" gorm:"not null" validate:"required,min=6"`
-	Role      UserRole  `json:"role" gorm:"not null;default:'customer'" validate:"required,oneof=customer staff admin"`
+	Name      string    `json:"name" gorm:"not null;type:varchar(100)"`
+	Username  string    `json:"username" gorm:"uniqueIndex;not null;type:text"`
+	Email     string    `json:"email" gorm:"uniqueIndex;not null;type:text"`
+	Phone     string    `json:"phone" gorm:"not null;type:varchar(20)"`
+	Password  string    `json:"-" gorm:"not null;type:text"`
+	Role      UserRole  `json:"role" gorm:"not null;type:text;default:customer"`
 	IsActive  bool      `json:"is_active" gorm:"default:true"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -29,9 +31,9 @@ type User struct {
 
 type Table struct {
 	ID          uint      `json:"id" gorm:"primaryKey"`
-	Number      int       `json:"number" gorm:"uniqueIndex;not null" validate:"required,min=1"`
-	QRCode      string    `json:"qr_code" gorm:"uniqueIndex;not null" validate:"required"`
-	Capacity    int       `json:"capacity" gorm:"not null" validate:"required,min=1,max=20"`
+	Number      int       `json:"number" gorm:"uniqueIndex;not null"`
+	QRCode      string    `json:"qr_code" gorm:"uniqueIndex;not null"`
+	Capacity    int       `json:"capacity" gorm:"not null"`
 	IsAvailable bool      `json:"is_available" gorm:"default:true"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -40,7 +42,7 @@ type Table struct {
 
 type MenuCategory struct {
 	ID          uint        `json:"id" gorm:"primaryKey"`
-	Name        string      `json:"name" gorm:"not null" validate:"required,min=2,max=100"`
+	Name        string      `json:"name" gorm:"not null"`
 	Description string      `json:"description"`
 	IsActive    bool        `json:"is_active" gorm:"default:true"`
 	SortOrder   int         `json:"sort_order" gorm:"default:0"`
@@ -52,10 +54,10 @@ type MenuCategory struct {
 
 type MenuItem struct {
 	ID          uint         `json:"id" gorm:"primaryKey"`
-	CategoryID  uint         `json:"category_id" gorm:"not null" validate:"required"`
-	Name        string       `json:"name" gorm:"not null" validate:"required,min=2,max=100"`
+	CategoryID  uint         `json:"category_id" gorm:"not null"`
+	Name        string       `json:"name" gorm:"not null"`
 	Description string       `json:"description"`
-	Price       float64      `json:"price" gorm:"not null" validate:"required,gt=0"`
+	Price       float64      `json:"price" gorm:"not null"`
 	ImageURL    string       `json:"image_url"`
 	IsAvailable bool         `json:"is_available" gorm:"default:true"`
 	SortOrder   int          `json:"sort_order" gorm:"default:0"`
@@ -78,10 +80,10 @@ const (
 
 type Order struct {
 	ID            uint        `json:"id" gorm:"primaryKey"`
-	UserID        uint        `json:"user_id" gorm:"not null" validate:"required"`
-	TableID       uint        `json:"table_id" gorm:"not null" validate:"required"`
-	Status        OrderStatus `json:"status" gorm:"not null;default:'pending'" validate:"required,oneof=pending confirmed preparing ready served cancelled"`
-	TotalAmount   float64     `json:"total_amount" gorm:"not null" validate:"required,gt=0"`
+	UserID        uint        `json:"user_id" gorm:"not null"`
+	TableID       uint        `json:"table_id" gorm:"not null"`
+	Status        OrderStatus `json:"status" gorm:"not null;default:pending"`
+	TotalAmount   float64     `json:"total_amount" gorm:"not null"`
 	SpecialNotes  string      `json:"special_notes"`
 	CreatedAt     time.Time   `json:"created_at"`
 	UpdatedAt     time.Time   `json:"updated_at"`
@@ -96,11 +98,11 @@ type Order struct {
 
 type OrderItem struct {
 	ID             uint      `json:"id" gorm:"primaryKey"`
-	OrderID        uint      `json:"order_id" gorm:"not null" validate:"required"`
-	MenuItemID     uint      `json:"menu_item_id" gorm:"not null" validate:"required"`
-	Quantity       int       `json:"quantity" gorm:"not null" validate:"required,min=1"`
-	UnitPrice      float64   `json:"unit_price" gorm:"not null" validate:"required,gt=0"`
-	TotalPrice     float64   `json:"total_price" gorm:"not null" validate:"required,gt=0"`
+	OrderID        uint      `json:"order_id" gorm:"not null"`
+	MenuItemID     uint      `json:"menu_item_id" gorm:"not null"`
+	Quantity       int       `json:"quantity" gorm:"not null"`
+	UnitPrice      float64   `json:"unit_price" gorm:"not null"`
+	TotalPrice     float64   `json:"total_price" gorm:"not null"`
 	SpecialRequest string    `json:"special_request"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
@@ -129,10 +131,10 @@ const (
 
 type Payment struct {
 	ID            uint          `json:"id" gorm:"primaryKey"`
-	OrderID       uint          `json:"order_id" gorm:"uniqueIndex;not null" validate:"required"`
-	Method        PaymentMethod `json:"method" gorm:"not null" validate:"required,oneof=qris cash"`
-	Status        PaymentStatus `json:"status" gorm:"not null;default:'pending'" validate:"required,oneof=pending completed failed refunded"`
-	Amount        float64       `json:"amount" gorm:"not null" validate:"required,gt=0"`
+	OrderID       uint          `json:"order_id" gorm:"uniqueIndex;not null"`
+	Method        PaymentMethod `json:"method" gorm:"not null"`
+	Status        PaymentStatus `json:"status" gorm:"not null;default:pending"`
+	Amount        float64       `json:"amount" gorm:"not null"`
 	QRISData      string        `json:"qris_data,omitempty"` // Encrypted QRIS payload
 	TransactionID string        `json:"transaction_id,omitempty"`
 	ExternalID    string        `json:"external_id,omitempty"`

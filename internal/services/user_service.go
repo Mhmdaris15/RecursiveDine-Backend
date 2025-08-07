@@ -49,6 +49,13 @@ func (s *UserService) CreateUser(user *repositories.User) (*repositories.User, e
 		return nil, errors.New("email already exists")
 	}
 
+	// Check if phone already exists
+	if exists, err := s.userRepo.IsPhoneExists(user.Phone); err != nil {
+		return nil, errors.New("failed to check phone")
+	} else if exists {
+		return nil, errors.New("phone already exists")
+	}
+
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -89,6 +96,15 @@ func (s *UserService) UpdateUser(user *repositories.User) (*repositories.User, e
 			return nil, errors.New("failed to check email")
 		} else if exists {
 			return nil, errors.New("email already exists")
+		}
+	}
+
+	// Check if phone changed and if new phone already exists
+	if existing.Phone != user.Phone {
+		if exists, err := s.userRepo.IsPhoneExists(user.Phone); err != nil {
+			return nil, errors.New("failed to check phone")
+		} else if exists {
+			return nil, errors.New("phone already exists")
 		}
 	}
 

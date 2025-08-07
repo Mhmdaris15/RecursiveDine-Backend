@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"recursiveDine/internal/config"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -14,7 +16,7 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -30,9 +32,9 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// In a real application, you would get the JWT secret from config
+		// Use the JWT secret from config
 		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			return []byte("your-secret-key-change-this-in-production"), nil
+			return []byte(cfg.JWTSecret), nil
 		})
 
 		if err != nil || !token.Valid {
@@ -82,7 +84,7 @@ func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 	}
 }
 
-func WSAuthMiddleware() gin.HandlerFunc {
+func WSAuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := c.Query("token")
 		if token == "" {
@@ -91,9 +93,9 @@ func WSAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Validate JWT token
+		// Validate JWT token using config secret
 		parsedToken, err := jwt.ParseWithClaims(token, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			return []byte("your-secret-key-change-this-in-production"), nil
+			return []byte(cfg.JWTSecret), nil
 		})
 
 		if err != nil || !parsedToken.Valid {

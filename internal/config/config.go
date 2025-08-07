@@ -53,7 +53,7 @@ func Load() (*Config, error) {
 		DBPassword: getEnv("DB_PASSWORD", "postgres"),
 		DBName:     getEnv("DB_NAME", "recursive_dine"),
 
-		JWTSecret:          getEnv("JWT_SECRET", "your-secret-key-change-this-in-production"),
+		JWTSecret:          getEnv("JWT_SECRET", "recursive_dine_key_secret"),
 		JWTExpirationHours: getEnvInt("JWT_EXPIRATION_HOURS", 24),
 		JWTRefreshHours:    getEnvInt("JWT_REFRESH_HOURS", 168), // 7 days
 

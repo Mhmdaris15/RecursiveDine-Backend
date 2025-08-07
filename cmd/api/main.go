@@ -60,6 +60,7 @@ func main() {
 	orderService := services.NewOrderService(orderRepo, menuRepo)
 	paymentService := services.NewPaymentService(paymentRepo, orderRepo, cfg)
 	kitchenService := services.NewKitchenService(orderRepo)
+	seedService := services.NewSeedService(db, userRepo, tableRepo, menuRepo)
 
 	// Initialize controllers
 	authController := controllers.NewAuthController(authService)
@@ -68,6 +69,7 @@ func main() {
 	orderController := controllers.NewOrderController(orderService, authService)
 	paymentController := controllers.NewPaymentController(paymentService)
 	kitchenController := controllers.NewKitchenController(kitchenService)
+	seedController := controllers.NewSeedController(seedService)
 	
 	// Initialize CRUD controllers
 	userController := controllers.NewUserController(userService)
@@ -75,7 +77,7 @@ func main() {
 	paymentManagementController := controllers.NewPaymentManagementController(paymentService)
 
 	// Setup router
-	router := setupRouter(cfg, authController, tableController, menuController, orderController, paymentController, kitchenController, userController, orderManagementController, paymentManagementController)
+	router := setupRouter(cfg, authController, tableController, menuController, orderController, paymentController, kitchenController, userController, orderManagementController, paymentManagementController, seedController)
 
 	// Start server
 	srv := &http.Server{
@@ -141,7 +143,7 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 	return db, nil
 }
 
-func setupRouter(cfg *config.Config, authController *controllers.AuthController, tableController *controllers.TableController, menuController *controllers.MenuController, orderController *controllers.OrderController, paymentController *controllers.PaymentController, kitchenController *controllers.KitchenController, userController *controllers.UserController, orderManagementController *controllers.OrderManagementController, paymentManagementController *controllers.PaymentManagementController) *gin.Engine {
+func setupRouter(cfg *config.Config, authController *controllers.AuthController, tableController *controllers.TableController, menuController *controllers.MenuController, orderController *controllers.OrderController, paymentController *controllers.PaymentController, kitchenController *controllers.KitchenController, userController *controllers.UserController, orderManagementController *controllers.OrderManagementController, paymentManagementController *controllers.PaymentManagementController, seedController *controllers.SeedController) *gin.Engine {
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -174,7 +176,7 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 			auth.POST("/login", authController.Login)
 			auth.POST("/register", authController.Register)
 			auth.POST("/refresh", authController.RefreshToken)
-			auth.POST("/logout", middleware.AuthMiddleware(), authController.Logout)
+			auth.POST("/logout", middleware.AuthMiddleware(cfg), authController.Logout)
 		}
 
 		// Table routes
@@ -193,7 +195,7 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 
 		// Order routes
 		orders := api.Group("/orders")
-		orders.Use(middleware.AuthMiddleware())
+		orders.Use(middleware.AuthMiddleware(cfg))
 		{
 			orders.POST("", orderController.CreateOrder)
 			orders.GET("/:id", orderController.GetOrder)
@@ -203,7 +205,7 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 
 		// Payment routes
 		payments := api.Group("/payments")
-		payments.Use(middleware.AuthMiddleware())
+		payments.Use(middleware.AuthMiddleware(cfg))
 		{
 			payments.POST("/qris", paymentController.InitiateQRISPayment)
 			payments.POST("/verify", paymentController.VerifyPayment)
@@ -212,7 +214,7 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 
 		// Admin routes
 		admin := api.Group("/admin")
-		admin.Use(middleware.AuthMiddleware())
+		admin.Use(middleware.AuthMiddleware(cfg))
 		admin.Use(middleware.RoleMiddleware("admin"))
 		{
 			// User management
@@ -273,11 +275,19 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 				paymentAdmin.GET("/statistics", paymentManagementController.GetPaymentStatistics)
 				paymentAdmin.GET("/revenue", paymentManagementController.GetDailyRevenueByPayment)
 			}
+
+			// Database seeding routes
+			seed := admin.Group("/seed")
+			{
+				seed.POST("", seedController.SeedDatabase)
+				seed.DELETE("", seedController.ClearDatabase)
+				seed.GET("/status", seedController.GetSeedStatus)
+			}
 		}
 
 		// Staff routes (staff and admin access)
 		staff := api.Group("/staff")
-		staff.Use(middleware.AuthMiddleware())
+		staff.Use(middleware.AuthMiddleware(cfg))
 		staff.Use(middleware.RoleMiddleware("staff", "admin"))
 		{
 			// Order management for staff
@@ -297,7 +307,7 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 
 		// Cashier routes (cashier and admin access)
 		cashier := api.Group("/cashier")
-		cashier.Use(middleware.AuthMiddleware())
+		cashier.Use(middleware.AuthMiddleware(cfg))
 		cashier.Use(middleware.RoleMiddleware("cashier", "admin"))
 		{
 			// Cash payment processing
@@ -314,7 +324,7 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 	}
 
 	// WebSocket for kitchen updates
-	router.GET("/kitchen/updates", middleware.WSAuthMiddleware(), kitchenController.HandleWebSocket)
+	router.GET("/kitchen/updates", middleware.WSAuthMiddleware(cfg), kitchenController.HandleWebSocket)
 
 	return router
 }

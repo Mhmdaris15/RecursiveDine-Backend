@@ -2,6 +2,8 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"recursiveDine/internal/config"
@@ -23,9 +25,10 @@ type LoginRequest struct {
 }
 
 type RegisterRequest struct {
-	Username string `json:"username" binding:"required,min=3,max=50"`
+	Name     string `json:"name" binding:"required,min=2,max=100"`
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
+	Phone    string `json:"phone" binding:"required,min=10,max=20"`
 }
 
 type AuthResponse struct {
@@ -86,18 +89,34 @@ func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
 }
 
 func (s *AuthService) Register(req *RegisterRequest) (*AuthResponse, error) {
-	// Check if username already exists
-	if exists, err := s.userRepo.IsUsernameExists(req.Username); err != nil {
-		return nil, errors.New("failed to check username")
-	} else if exists {
-		return nil, errors.New("username already exists")
-	}
-
 	// Check if email already exists
 	if exists, err := s.userRepo.IsEmailExists(req.Email); err != nil {
 		return nil, errors.New("failed to check email")
 	} else if exists {
 		return nil, errors.New("email already exists")
+	}
+
+	// Check if phone already exists
+	if exists, err := s.userRepo.IsPhoneExists(req.Phone); err != nil {
+		return nil, errors.New("failed to check phone")
+	} else if exists {
+		return nil, errors.New("phone already exists")
+	}
+
+	// Generate username from email (part before @)
+	username := req.Email[:strings.Index(req.Email, "@")]
+	
+	// Make username unique if it already exists
+	originalUsername := username
+	counter := 1
+	for {
+		if exists, err := s.userRepo.IsUsernameExists(username); err != nil {
+			return nil, errors.New("failed to check username")
+		} else if !exists {
+			break
+		}
+		username = fmt.Sprintf("%s%d", originalUsername, counter)
+		counter++
 	}
 
 	// Hash password
@@ -108,8 +127,10 @@ func (s *AuthService) Register(req *RegisterRequest) (*AuthResponse, error) {
 
 	// Create user
 	user := &repositories.User{
-		Username: req.Username,
+		Name:     req.Name,
+		Username: username,
 		Email:    req.Email,
+		Phone:    req.Phone,
 		Password: string(hashedPassword),
 		Role:     repositories.RoleCustomer,
 		IsActive: true,

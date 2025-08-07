@@ -143,8 +143,10 @@ func (suite *APITestSuite) createTestUsers(authService *services.AuthService) {
 
 	// Create admin user
 	adminUser := &repositories.User{
+		Name:     "Admin User",
 		Username: "admin",
 		Email:    "admin@test.com",
+		Phone:    "+1234567001",
 		Password: string(hashedPassword),
 		Role:     repositories.RoleAdmin,
 	}
@@ -152,8 +154,10 @@ func (suite *APITestSuite) createTestUsers(authService *services.AuthService) {
 
 	// Create staff user
 	staffUser := &repositories.User{
+		Name:     "Staff User",
 		Username: "staff",
 		Email:    "staff@test.com",
+		Phone:    "+1234567002",
 		Password: string(hashedPassword),
 		Role:     repositories.RoleStaff,
 	}
@@ -161,8 +165,10 @@ func (suite *APITestSuite) createTestUsers(authService *services.AuthService) {
 
 	// Create cashier user
 	cashierUser := &repositories.User{
+		Name:     "Cashier User",
 		Username: "cashier",
 		Email:    "cashier@test.com",
+		Phone:    "+1234567003",
 		Password: string(hashedPassword),
 		Role:     repositories.RoleCashier,
 	}
@@ -170,8 +176,10 @@ func (suite *APITestSuite) createTestUsers(authService *services.AuthService) {
 
 	// Create customer user
 	customerUser := &repositories.User{
+		Name:     "Customer User",
 		Username: "customer",
 		Email:    "customer@test.com",
+		Phone:    "+1234567004",
 		Password: string(hashedPassword),
 		Role:     repositories.RoleCustomer,
 	}
