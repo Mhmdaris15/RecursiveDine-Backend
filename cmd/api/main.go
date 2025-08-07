@@ -121,9 +121,36 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 	
 	fmt.Printf("DSN: %s\n", dsn)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// Retry database connection up to 10 times with increasing delays
+	var db *gorm.DB
+	var err error
+	maxRetries := 10
+	for i := 0; i < maxRetries; i++ {
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err == nil {
+			// Test the connection
+			sqlDB, sqlErr := db.DB()
+			if sqlErr == nil {
+				pingErr := sqlDB.Ping()
+				if pingErr == nil {
+					fmt.Printf("Successfully connected to database on attempt %d\n", i+1)
+					break
+				}
+				err = pingErr
+			} else {
+				err = sqlErr
+			}
+		}
+		
+		if i < maxRetries-1 {
+			waitTime := time.Duration(i+1) * 2 * time.Second
+			fmt.Printf("Database connection attempt %d failed: %v. Retrying in %v...\n", i+1, err, waitTime)
+			time.Sleep(waitTime)
+		}
+	}
+	
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to database after %d attempts: %v", maxRetries, err)
 	}
 
 	// // Auto-migrate models
