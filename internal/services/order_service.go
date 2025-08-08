@@ -221,7 +221,7 @@ func (s *OrderService) validateStatusTransition(currentStatus, newStatus reposit
 
 func (s *OrderService) GetAllOrdersAdmin(page, limit int, status string) ([]*repositories.Order, int64, error) {
 	offset := (page - 1) * limit
-	return s.orderRepo.GetAllOrdersPaginated(offset, limit, status)
+	return s.orderRepo.GetAllOrdersPaginated(limit, offset, status)
 }
 
 func (s *OrderService) GetOrderByIDAdmin(id uint) (*repositories.Order, error) {

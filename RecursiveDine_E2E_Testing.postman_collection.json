@@ -668,7 +668,7 @@
 			"name": "8. Admin Management",
 			"item": [
 				{
-					"name": "Get All Orders",
+					"name": "Get All Orders History (Admin)",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -678,9 +678,19 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/v1/admin/orders",
+							"raw": "{{base_url}}/api/v1/admin/orders?page=1&limit=10",
 							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "admin", "orders"]
+							"path": ["api", "v1", "admin", "orders"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
 						}
 					},
 					"event": [
@@ -693,8 +703,121 @@
 									"});",
 									"",
 									"const responseJson = pm.response.json();",
-									"pm.test(\"Orders array is returned\", function () {",
-									"    pm.expect(responseJson).to.be.an('array');",
+									"pm.test(\"Response contains pagination info\", function () {",
+									"    pm.expect(responseJson).to.have.property('orders');",
+									"    pm.expect(responseJson).to.have.property('total');",
+									"    pm.expect(responseJson).to.have.property('page');",
+									"    pm.expect(responseJson).to.have.property('limit');",
+									"    pm.expect(responseJson).to.have.property('total_pages');",
+									"});",
+									"",
+									"pm.test(\"Orders contain necessary details\", function () {",
+									"    if (responseJson.orders && responseJson.orders.length > 0) {",
+									"        const order = responseJson.orders[0];",
+									"        pm.expect(order).to.have.property('id');",
+									"        pm.expect(order).to.have.property('status');",
+									"        pm.expect(order).to.have.property('total_amount');",
+									"        pm.expect(order).to.have.property('created_at');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get All Orders History (Cashier)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{cashier_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/orders?page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "orders"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Cashier can access orders history\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Response contains orders data\", function () {",
+									"    pm.expect(responseJson).to.have.property('orders');",
+									"    pm.expect(responseJson).to.have.property('total');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Orders with Status Filter",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/orders?status=preparing&page=1&limit=5",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "orders"],
+							"query": [
+								{
+									"key": "status",
+									"value": "preparing"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Filtered orders retrieved successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"All returned orders have correct status\", function () {",
+									"    if (responseJson.orders && responseJson.orders.length > 0) {",
+									"        responseJson.orders.forEach(order => {",
+									"            pm.expect(order.status).to.eql(\"preparing\");",
+									"        });",
+									"    }",
 									"});"
 								],
 								"type": "text/javascript"
@@ -731,6 +854,64 @@
 									"pm.test(\"Statistics contain expected fields\", function () {",
 									"    pm.expect(responseJson).to.have.property('total_orders');",
 									"    pm.expect(responseJson).to.have.property('total_revenue');",
+									"    pm.expect(responseJson).to.have.property('average_order_value');",
+									"    pm.expect(responseJson).to.have.property('orders_by_status');",
+									"});",
+									"",
+									"pm.test(\"Orders by status is an object\", function () {",
+									"    pm.expect(responseJson.orders_by_status).to.be.an('object');",
+									"});",
+									"",
+									"pm.test(\"Numeric values are valid\", function () {",
+									"    pm.expect(responseJson.total_orders).to.be.a('number');",
+									"    pm.expect(responseJson.total_revenue).to.be.a('number');",
+									"    pm.expect(responseJson.average_order_value).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Order Statistics with Date Range",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/orders/statistics?from=2025-08-01&to=2025-08-31",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "orders", "statistics"],
+							"query": [
+								{
+									"key": "from",
+									"value": "2025-08-01"
+								},
+								{
+									"key": "to",
+									"value": "2025-08-31"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Date-filtered statistics retrieved successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Statistics for date range are returned\", function () {",
+									"    pm.expect(responseJson).to.have.property('total_orders');",
+									"    pm.expect(responseJson).to.have.property('total_revenue');",
 									"});"
 								],
 								"type": "text/javascript"
@@ -749,15 +930,9 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/api/v1/admin/orders/revenue?date={{$isoTimestamp}}",
+							"raw": "{{base_url}}/api/v1/admin/orders/revenue",
 							"host": ["{{base_url}}"],
-							"path": ["api", "v1", "admin", "orders", "revenue"],
-							"query": [
-								{
-									"key": "date",
-									"value": "{{$isoTimestamp}}"
-								}
-							]
+							"path": ["api", "v1", "admin", "orders", "revenue"]
 						}
 					},
 					"event": [
@@ -767,6 +942,163 @@
 								"exec": [
 									"pm.test(\"Daily revenue retrieved successfully\", function () {",
 									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Revenue data contains expected fields\", function () {",
+									"    pm.expect(responseJson).to.have.property('daily_revenue');",
+									"    pm.expect(responseJson).to.have.property('total_revenue');",
+									"});",
+									"",
+									"pm.test(\"Daily revenue is an array\", function () {",
+									"    pm.expect(responseJson.daily_revenue).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Daily Revenue with Date Range",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/orders/revenue?from=2025-08-01&to=2025-08-31",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "orders", "revenue"],
+							"query": [
+								{
+									"key": "from",
+									"value": "2025-08-01"
+								},
+								{
+									"key": "to",
+									"value": "2025-08-31"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Date-filtered revenue retrieved successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Revenue data for date range is returned\", function () {",
+									"    pm.expect(responseJson).to.have.property('daily_revenue');",
+									"    pm.expect(responseJson).to.have.property('total_revenue');",
+									"});",
+									"",
+									"pm.test(\"Daily revenue entries contain date and amount\", function () {",
+									"    if (responseJson.daily_revenue && responseJson.daily_revenue.length > 0) {",
+									"        const entry = responseJson.daily_revenue[0];",
+									"        pm.expect(entry).to.have.property('date');",
+									"        pm.expect(entry).to.have.property('revenue');",
+									"        pm.expect(entry).to.have.property('order_count');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Specific Order Details (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/orders/{{cashier_order_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "orders", "{{cashier_order_id}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Specific order details retrieved successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Order details include all necessary information\", function () {",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('order_items');",
+									"    pm.expect(responseJson).to.have.property('user');",
+									"    pm.expect(responseJson).to.have.property('table');",
+									"    pm.expect(responseJson).to.have.property('status');",
+									"    pm.expect(responseJson).to.have.property('total_amount');",
+									"});",
+									"",
+									"pm.test(\"Order items contain menu details\", function () {",
+									"    if (responseJson.order_items && responseJson.order_items.length > 0) {",
+									"        const item = responseJson.order_items[0];",
+									"        pm.expect(item).to.have.property('menu_item');",
+									"        pm.expect(item).to.have.property('quantity');",
+									"        pm.expect(item).to.have.property('price');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Order Status (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"ready\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/orders/{{cashier_order_id}}/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "orders", "{{cashier_order_id}}", "status"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Order status updated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Status is updated to ready\", function () {",
+									"    pm.expect(responseJson.status).to.eql(\"ready\");",
 									"});"
 								],
 								"type": "text/javascript"
@@ -777,7 +1109,7 @@
 			]
 		},
 		{
-			"name": "9. Error Handling Tests",
+			"name": "9. Error Handling & Edge Cases",
 			"item": [
 				{
 					"name": "Create Order with Invalid Table",
@@ -883,6 +1215,159 @@
 								"exec": [
 									"pm.test(\"Unauthorized access returns 401\", function () {",
 									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Authentication error message is provided\", function () {",
+									"    pm.expect(responseJson).to.have.property('error');",
+									"    pm.expect(responseJson.error).to.include('authentication');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Invalid Login Credentials",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"invalid@test.com\",\n  \"password\": \"wrongpassword\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Invalid credentials return 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Invalid credentials error message is provided\", function () {",
+									"    pm.expect(responseJson).to.have.property('error');",
+									"    pm.expect(responseJson.error).to.include('credentials');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Malformed JSON Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{cashier_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"table_id\": {{table_id}},\n  \"customer_name\": \"Test Customer\",\n  \"cashier_name\": \"Test Cashier\",\n  \"items\": [\n    {\n      \"menu_item_id\": {{menu_item_1_id}},\n      \"quantity\": \"invalid_number\"\n    }\n  \n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/cashier/orders",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "cashier", "orders"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Malformed JSON returns 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"JSON parsing error message is provided\", function () {",
+									"    pm.expect(responseJson).to.have.property('error');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Customer Role Access to Admin Endpoint",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/orders/statistics",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "orders", "statistics"]
+						}
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// First register a customer user for this test",
+									"const registerRequest = {",
+									"  url: pm.environment.get('base_url') + '/api/v1/auth/register',",
+									"  method: 'POST',",
+									"  header: {",
+									"    'Content-Type': 'application/json'",
+									"  },",
+									"  body: {",
+									"    mode: 'raw',",
+									"    raw: JSON.stringify({",
+									"      name: 'Test Customer',",
+									"      email: 'customer@test.com',",
+									"      phone: '+1234567890',",
+									"      password: 'customer123',",
+									"      role: 'customer'",
+									"    })",
+									"  }",
+									"};",
+									"",
+									"pm.sendRequest(registerRequest, function (err, response) {",
+									"  if (response.code === 201) {",
+									"    const responseJson = response.json();",
+									"    pm.environment.set('customer_token', responseJson.access_token);",
+									"  }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This test uses admin token, so it should succeed",
+									"pm.test(\"Admin can access statistics\", function () {",
+									"    pm.response.to.have.status(200);",
 									"});"
 								],
 								"type": "text/javascript"

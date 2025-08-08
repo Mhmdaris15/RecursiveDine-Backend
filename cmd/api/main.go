@@ -254,10 +254,11 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 		// Admin routes
 		admin := api.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(cfg))
-		admin.Use(middleware.RoleMiddleware("admin"))
+		admin.Use(middleware.RoleMiddleware("admin", "cashier"))
 		{
-			// User management
+			// User management (admin only)
 			users := admin.Group("/users")
+			users.Use(middleware.RoleMiddleware("admin"))
 			{
 				users.GET("", userController.GetAllUsers)
 				users.GET("/:id", userController.GetUserByID)
@@ -266,8 +267,9 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 				users.DELETE("/:id", userController.DeleteUser)
 			}
 
-			// Table management
+			// Table management (admin only)
 			tables := admin.Group("/tables")
+			tables.Use(middleware.RoleMiddleware("admin"))
 			{
 				tables.GET("", tableController.GetAllTables)
 				tables.POST("", tableController.CreateTable)
@@ -276,8 +278,9 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 				tables.PATCH("/:id/status", tableController.UpdateTableAvailability)
 			}
 
-			// Menu management
+			// Menu management (admin only)
 			menuAdmin := admin.Group("/menu")
+			menuAdmin.Use(middleware.RoleMiddleware("admin"))
 			{
 				// Category management
 				menuAdmin.POST("/categories", menuController.CreateCategory)
@@ -291,7 +294,7 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 				menuAdmin.PATCH("/items/:id/availability", menuController.UpdateMenuItemAvailability)
 			}
 
-			// Order management
+			// Order management (admin and cashier)
 			orders := admin.Group("/orders")
 			{
 				orders.GET("", orderManagementController.GetAllOrders)

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -73,12 +74,14 @@ func RoleMiddleware(allowedRoles ...string) gin.HandlerFunc {
 		}
 
 		for _, allowedRole := range allowedRoles {
+			fmt.Println("Checking role:", role, "against allowed role:", allowedRole)
 			if role == allowedRole {
 				c.Next()
 				return
 			}
 		}
 
+		fmt.Println("Insufficient permissions")
 		c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
 		c.Abort()
 	}
@@ -113,6 +116,7 @@ func WSAuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		// Only allow staff and admin for kitchen WebSocket
 		if claims.Role != "staff" && claims.Role != "admin" {
+			fmt.Println("Insufficient permissions for WebSocket access")
 			c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
 			c.Abort()
 			return

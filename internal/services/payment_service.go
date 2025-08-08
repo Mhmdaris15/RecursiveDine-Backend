@@ -22,18 +22,18 @@ type QRISPaymentRequest struct {
 }
 
 type QRISPaymentResponse struct {
-	PaymentID     uint   `json:"payment_id"`
-	QRISData      string `json:"qris_data"`
-	Amount        float64 `json:"amount"`
+	PaymentID     uint      `json:"payment_id"`
+	QRISData      string    `json:"qris_data"`
+	Amount        float64   `json:"amount"`
 	ExpiresAt     time.Time `json:"expires_at"`
-	TransactionID string `json:"transaction_id"`
+	TransactionID string    `json:"transaction_id"`
 }
 
 type PaymentVerificationRequest struct {
-	TransactionID string `json:"transaction_id" binding:"required"`
-	ExternalID    string `json:"external_id" binding:"required"`
+	TransactionID string  `json:"transaction_id" binding:"required"`
+	ExternalID    string  `json:"external_id" binding:"required"`
 	Amount        float64 `json:"amount" binding:"required"`
-	Status        string `json:"status" binding:"required"`
+	Status        string  `json:"status" binding:"required"`
 }
 
 func NewPaymentService(paymentRepo *repositories.PaymentRepository, orderRepo *repositories.OrderRepository, config *config.Config) *PaymentService {
@@ -220,6 +220,7 @@ func (s *PaymentService) ProcessCashPayment(orderID uint, amountPaid, changeAmou
 
 	// Validate payment amount
 	if amountPaid < order.TotalAmount {
+		fmt.Println("Insufficient payment amount")
 		return errors.New("insufficient payment amount")
 	}
 
@@ -308,11 +309,11 @@ func (s *PaymentService) ProcessRefund(paymentID uint, amount float64, reason st
 
 	// Create refund record
 	refund := &repositories.Payment{
-		OrderID:           payment.OrderID,
-		Amount:            -amount, // Negative amount for refund
-		Method:            payment.Method,
-		Status:            repositories.PaymentStatusCompleted,
-		TransactionID:     fmt.Sprintf("REFUND-%s", payment.TransactionID),
+		OrderID:       payment.OrderID,
+		Amount:        -amount, // Negative amount for refund
+		Method:        payment.Method,
+		Status:        repositories.PaymentStatusCompleted,
+		TransactionID: fmt.Sprintf("REFUND-%s", payment.TransactionID),
 	}
 
 	if err := s.paymentRepo.Create(refund); err != nil {
