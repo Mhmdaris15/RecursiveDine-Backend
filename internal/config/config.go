@@ -40,18 +40,22 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
-	// Load .env file if it exists
-	_ = godotenv.Load()
+	// Try to load development environment first
+	if env := os.Getenv("APP_ENV"); env == "development" {
+		_ = godotenv.Load(".env.dev")
+	} else {
+		_ = godotenv.Load()
+	}
 
 	cfg := &Config{
-		ServerPort:  getEnv("SERVER_PORT", "8002"),
-		Environment: getEnv("ENVIRONMENT", "development"),
+		ServerPort:  getEnv("APP_PORT", "8002"),
+		Environment: getEnv("APP_ENV", "development"),
 
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBUser:     getEnv("DB_USER", "postgres"),
 		DBPassword: getEnv("DB_PASSWORD", "postgres"),
-		DBName:     getEnv("DB_NAME", "recursive_dine"),
+		DBName:     getEnv("DB_NAME", "recursivedine"),
 
 		JWTSecret:          getEnv("JWT_SECRET", "recursive_dine_key_secret"),
 		JWTExpirationHours: getEnvInt("JWT_EXPIRATION_HOURS", 24),

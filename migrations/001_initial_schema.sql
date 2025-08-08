@@ -1,6 +1,5 @@
--- Database is already created by Docker environment variables
--- Connect to the database
-\c recursive_dine;
+-- Initial schema migration
+-- Created: 2025-08-08
 
 -- Create users table
 CREATE TABLE users (
@@ -129,11 +128,14 @@ CREATE INDEX idx_payments_external ON payments(external_id);
 CREATE INDEX idx_payments_status ON payments(status);
 CREATE INDEX idx_payments_deleted_at ON payments(deleted_at);
 
--- Insert sample data
+-- Insert sample data with properly hashed passwords
+-- admin@recursivedine.com: password 'admin123'
+-- staff1@recursivedine.com: password 'password123'  
+-- customer1@example.com: password 'password123'
 INSERT INTO users (username, email, password, role) VALUES 
-('admin', 'admin@recursiveDine.com', '$2a$10$example_hashed_password', 'admin'),
-('staff1', 'staff1@recursiveDine.com', '$2a$10$example_hashed_password', 'staff'),
-('customer1', 'customer1@example.com', '$2a$10$example_hashed_password', 'customer');
+('admin', 'admin@recursivedine.com', '$2a$10$jrezlNG2pZrkppFHamKbseC5IC0WxzX/WQm5U9Bl.i7NWOCun5TMO', 'admin'),
+('staff1', 'staff1@recursivedine.com', '$2a$10$yX8EQib9UrToO3ThKGZ.VO.4QFETRzrokCckN7H473STJO5sQ2viC', 'staff'),
+('customer1', 'customer1@example.com', '$2a$10$yX8EQib9UrToO3ThKGZ.VO.4QFETRzrokCckN7H473STJO5sQ2viC', 'customer');
 
 INSERT INTO tables (number, qr_code, capacity) VALUES 
 (1, 'QR001', 4),

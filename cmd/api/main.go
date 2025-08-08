@@ -15,6 +15,7 @@ import (
 	"recursiveDine/internal/middleware"
 	"recursiveDine/internal/repositories"
 	"recursiveDine/internal/services"
+	"recursiveDine/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -33,17 +34,28 @@ import (
 // @in header
 // @name Authorization
 func main() {
+	// Initialize logger
+	if err := utils.InitLogger(); err != nil {
+		log.Fatal("Failed to initialize logger:", err)
+	}
+	defer utils.AppLogger.Close()
+
+	utils.LogInfo("Application starting", nil)
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
+		utils.LogError("Failed to load configuration", err, nil)
 		log.Fatal("Failed to load configuration:", err)
 	}
 
 	// Initialize database
 	db, err := initDatabase(cfg)
 	if err != nil {
+		utils.LogError("Failed to initialize database", err, nil)
 		log.Fatal("Failed to initialize database:", err)
 	}
+	utils.LogInfo("Database initialized successfully", nil)
 
 	// Initialize repositories
 	userRepo := repositories.NewUserRepository(db)
@@ -337,6 +349,9 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 		cashier.Use(middleware.AuthMiddleware(cfg))
 		cashier.Use(middleware.RoleMiddleware("cashier", "admin"))
 		{
+			// Cashier order processing
+			cashier.POST("/orders", orderController.CreateCashierOrder)
+
 			// Cash payment processing
 			payments := cashier.Group("/payments")
 			{

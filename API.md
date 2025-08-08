@@ -1,12 +1,22 @@
 # RecursiveDine API Documentation
 
 ## Overview
-RecursiveDine is a secure, scalable restaurant self-service ordering system built with Go and PostgreSQL. This API provides comprehensive endpoints for managing restaurants, orders, payments, and user roles.
+RecursiveDine is a secure, scalable restaurant self-service ordering system built with Go and PostgreSQL. This API provides comprehensive endpoints for managing restaurants, orders, payments, and user roles with Indonesian VAT calculation support (10% tax rate).
 
 ## Base URL
 ```
 http://localhost:8002/api/v1
 ```
+
+## Key Features
+- **Multi-role Authentication**: Customer, Staff, Cashier, and Admin roles
+- **VAT Calculation**: Automatic 10% Indonesian VAT on cashier orders
+- **Real-time Updates**: WebSocket support for kitchen operations
+- **Payment Processing**: QRIS and cash payment methods
+- **Order Management**: Complete order lifecycle tracking
+- **Table Management**: QR code-based table system
+- **Rate Limiting**: Built-in API protection
+- **Comprehensive Logging**: Request/response monitoring
 
 ## Authentication
 Most endpoints require JWT authentication. Include the token in the Authorization header:
@@ -53,12 +63,20 @@ Register a new user account.
 ```
 
 ### POST /auth/login
-Login with email and password.
+Login with email or username and password.
 
 **Request Body:**
 ```json
 {
   "email": "john@example.com",
+  "password": "securepassword123"
+}
+```
+
+**Alternative (Username):**
+```json
+{
+  "username": "john_doe",
   "password": "securepassword123"
 }
 ```
@@ -355,19 +373,19 @@ Create a new order (Authenticated users).
   "user_id": 1,
   "table_id": 1,
   "status": "pending",
-  "total_amount": 32.97,
+  "total_amount": 34.07,
   "special_notes": "No onions please",
-  "created_at": "2025-07-20T10:00:00Z",
+  "created_at": "2025-08-08T10:00:00Z",
   "items": [
     {
       "id": 1,
       "menu_item_id": 1,
       "quantity": 2,
-      "price": 12.99,
+      "price": 8.99,
       "special_request": "Extra dressing",
       "menu_item": {
-        "name": "Caesar Salad",
-        "description": "Fresh romaine lettuce with caesar dressing"
+        "name": "Spring Rolls",
+        "description": "Crispy spring rolls with vegetables"
       }
     }
   ]
@@ -390,8 +408,8 @@ Get user's orders (Authenticated users).
       "id": 1,
       "table_id": 1,
       "status": "pending",
-      "total_amount": 32.97,
-      "created_at": "2025-07-20T10:00:00Z"
+      "total_amount": 34.07,
+      "created_at": "2025-08-08T10:00:00Z"
     }
   ]
 }
@@ -407,15 +425,15 @@ Get specific order details (Authenticated users - own orders only).
   "user_id": 1,
   "table_id": 1,
   "status": "confirmed",
-  "total_amount": 32.97,
+  "total_amount": 34.07,
   "special_notes": "No onions please",
-  "created_at": "2025-07-20T10:00:00Z",
+  "created_at": "2025-08-08T10:00:00Z",
   "items": [
     {
       "id": 1,
       "menu_item_id": 1,
       "quantity": 2,
-      "price": 12.99,
+      "price": 8.99,
       "special_request": "Extra dressing"
     }
   ]
@@ -441,8 +459,8 @@ Get all orders with advanced filtering (Admin/Staff).
       "user_id": 1,
       "table_id": 1,
       "status": "confirmed",
-      "total_amount": 32.97,
-      "created_at": "2025-07-20T10:00:00Z",
+      "total_amount": 34.07,
+      "created_at": "2025-08-08T10:00:00Z",
       "user": {
         "name": "John Doe",
         "email": "john@example.com"
@@ -456,6 +474,72 @@ Get all orders with advanced filtering (Admin/Staff).
   "page": 1,
   "limit": 10,
   "total_pages": 15
+}
+```
+
+### POST /cashier/orders
+Create a new order with VAT calculation (Cashier/Admin only).
+
+**Request Body:**
+```json
+{
+  "table_id": 1,
+  "customer_name": "John Doe",
+  "cashier_name": "Cashier One",
+  "special_notes": "Extra spicy",
+  "items": [
+    {
+      "menu_item_id": 1,
+      "quantity": 2,
+      "special_request": "Extra sauce"
+    },
+    {
+      "menu_item_id": 2,
+      "quantity": 1,
+      "special_request": ""
+    }
+  ]
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": 1,
+  "user_id": 2,
+  "table_id": 1,
+  "customer_name": "John Doe",
+  "cashier_name": "Cashier One",
+  "status": "pending",
+  "subtotal": 30.97,
+  "vat_amount": 3.10,
+  "total_amount": 34.07,
+  "special_notes": "Extra spicy",
+  "created_at": "2025-08-08T10:00:00Z",
+  "items": [
+    {
+      "id": 1,
+      "menu_item_id": 1,
+      "quantity": 2,
+      "price": 8.99,
+      "special_request": "Extra sauce",
+      "menu_item": {
+        "name": "Spring Rolls",
+        "description": "Crispy spring rolls with vegetables"
+      }
+    },
+    {
+      "id": 2,
+      "menu_item_id": 2,
+      "quantity": 1,
+      "price": 12.99,
+      "special_request": "",
+      "menu_item": {
+        "name": "Chicken Wings",
+        "description": "Spicy buffalo chicken wings"
+      }
+    }
+  ]
 }
 ```
 
@@ -496,13 +580,13 @@ Get order statistics (Admin only).
     "served": 120,
     "cancelled": 4
   },
-  "average_order_value": 28.50,
-  "total_revenue": 4275.00,
+  "average_order_value": 29.50,
+  "total_revenue": 4425.00,
   "orders_per_day": [
     {
-      "date": "2025-07-20",
+      "date": "2025-08-08",
       "count": 15,
-      "revenue": 427.50
+      "revenue": 442.50
     }
   ]
 }
@@ -529,8 +613,8 @@ Initiate QRIS payment (Authenticated users).
   "payment_id": 1,
   "qr_code": "data:image/png;base64,iVBORw0KGgoAAAANS...",
   "transaction_id": "RD1642680000abc123",
-  "amount": 32.97,
-  "expires_at": "2025-07-20T10:15:00Z"
+  "amount": 34.07,
+  "expires_at": "2025-08-08T10:15:00Z"
 }
 ```
 
@@ -542,7 +626,7 @@ Verify payment status (Authenticated users).
 {
   "transaction_id": "RD1642680000abc123",
   "external_id": "QRIS123456789",
-  "amount": 32.97,
+  "amount": 34.07,
   "status": "success"
 }
 ```
@@ -555,7 +639,7 @@ Process cash payment (Cashier/Admin).
 {
   "order_id": 1,
   "amount_paid": 35.00,
-  "change_amount": 2.03
+  "change_amount": 0.93
 }
 ```
 
@@ -565,8 +649,8 @@ Process cash payment (Cashier/Admin).
   "payment_id": 2,
   "transaction_id": "RD1642680000def456",
   "amount_paid": 35.00,
-  "change_amount": 2.03,
-  "order_total": 32.97,
+  "change_amount": 0.93,
+  "order_total": 34.07,
   "message": "Cash payment processed successfully"
 }
 ```
@@ -587,11 +671,11 @@ Get all payments (Admin/Cashier).
     {
       "id": 1,
       "order_id": 1,
-      "amount": 32.97,
+      "amount": 34.07,
       "method": "qris",
       "status": "completed",
       "transaction_id": "RD1642680000abc123",
-      "created_at": "2025-07-20T10:00:00Z",
+      "created_at": "2025-08-08T10:00:00Z",
       "order": {
         "id": 1,
         "table": {
@@ -613,7 +697,7 @@ Process payment refund (Admin/Cashier).
 **Request Body:**
 ```json
 {
-  "amount": 32.97,
+  "amount": 34.07,
   "reason": "Customer complaint - food quality"
 }
 ```
@@ -623,10 +707,10 @@ Process payment refund (Admin/Cashier).
 {
   "refund_id": 3,
   "original_payment_id": 1,
-  "refund_amount": 32.97,
+  "refund_amount": 34.07,
   "reason": "Customer complaint - food quality",
   "status": "completed",
-  "processed_at": "2025-07-20T11:00:00Z"
+  "processed_at": "2025-08-08T11:00:00Z"
 }
 ```
 
@@ -872,8 +956,14 @@ Check API health status.
 ```json
 {
   "status": "healthy",
-  "timestamp": "2025-07-20T10:00:00Z",
-  "version": "1.0.0"
+  "timestamp": "2025-08-08T10:00:00Z",
+  "version": "1.0.0",
+  "database": "connected",
+  "features": {
+    "vat_calculation": "enabled",
+    "payment_methods": ["qris", "cash"],
+    "roles": ["customer", "staff", "cashier", "admin"]
+  }
 }
 ```
 

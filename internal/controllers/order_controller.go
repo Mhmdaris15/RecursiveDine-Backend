@@ -6,6 +6,7 @@ import (
 
 	"recursiveDine/internal/repositories"
 	"recursiveDine/internal/services"
+	"recursiveDine/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -277,5 +278,79 @@ func (ctrl *OrderController) GetOrdersByStatus(c *gin.Context) {
 		"status": statusParam,
 		"page":   page,
 		"limit":  limit,
+	})
+}
+
+// @Summary Create cashier order
+// @Description Create an order through cashier with customer name, VAT calculation
+// @Tags cashier
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body services.CashierOrderRequest true "Cashier order details"
+// @Success 201 {object} services.OrderResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /cashier/orders [post]
+func (oc *OrderController) CreateCashierOrder(c *gin.Context) {
+	var request services.CashierOrderRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		utils.LogError("Invalid cashier order request format", err, map[string]interface{}{
+			"request_body": request,
+		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
+		return
+	}
+
+	// Get cashier user ID from token
+	userID, exists := c.Get("user_id")
+	if !exists {
+		utils.LogWarning("Cashier order attempt without authentication", map[string]interface{}{
+			"customer_name": request.CustomerName,
+		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	cashierUserID, ok := userID.(uint)
+	if !ok {
+		utils.LogError("Invalid user ID type in cashier order", nil, map[string]interface{}{
+			"user_id": userID,
+		})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	utils.LogInfo("Creating cashier order", map[string]interface{}{
+		"cashier_user_id": cashierUserID,
+		"customer_name":   request.CustomerName,
+		"cashier_name":    request.CashierName,
+		"table_id":        request.TableID,
+		"items_count":     len(request.Items),
+	})
+
+	// Create the order through cashier service
+	order, err := oc.orderService.CreateCashierOrder(cashierUserID, &request)
+	if err != nil {
+		utils.LogError("Failed to create cashier order", err, map[string]interface{}{
+			"cashier_user_id": cashierUserID,
+			"customer_name":   request.CustomerName,
+			"request":         request,
+		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	utils.LogInfo("Cashier order created successfully", map[string]interface{}{
+		"order_id":        order.ID,
+		"cashier_user_id": cashierUserID,
+		"customer_name":   order.CustomerName,
+		"total_amount":    order.TotalAmount,
+	})
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Cashier order created successfully",
+		"order":   order,
 	})
 }

@@ -20,7 +20,8 @@ type AuthService struct {
 }
 
 type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -29,6 +30,7 @@ type RegisterRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required,min=6"`
 	Phone    string `json:"phone" binding:"required,min=10,max=20"`
+	Role     string `json:"role,omitempty"` // Optional role field for admin/staff registration
 }
 
 type AuthResponse struct {
@@ -53,7 +55,18 @@ func NewAuthService(userRepo *repositories.UserRepository, config *config.Config
 }
 
 func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
-	user, err := s.userRepo.GetByUsername(req.Username)
+	var user *repositories.User
+	var err error
+
+	// Support login with either username or email
+	if req.Username != "" {
+		user, err = s.userRepo.GetByUsername(req.Username)
+	} else if req.Email != "" {
+		user, err = s.userRepo.GetByEmail(req.Email)
+	} else {
+		return nil, errors.New("username or email is required")
+	}
+
 	if err != nil {
 		return nil, errors.New("invalid credentials")
 	}
@@ -125,6 +138,24 @@ func (s *AuthService) Register(req *RegisterRequest) (*AuthResponse, error) {
 		return nil, errors.New("failed to hash password")
 	}
 
+	// Determine user role
+	userRole := repositories.RoleCustomer // Default role
+	if req.Role != "" {
+		// Validate role
+		switch req.Role {
+		case "admin":
+			userRole = repositories.RoleAdmin
+		case "staff":
+			userRole = repositories.RoleStaff
+		case "cashier":
+			userRole = repositories.RoleCashier
+		case "customer":
+			userRole = repositories.RoleCustomer
+		default:
+			return nil, errors.New("invalid role specified")
+		}
+	}
+
 	// Create user
 	user := &repositories.User{
 		Name:     req.Name,
@@ -132,7 +163,7 @@ func (s *AuthService) Register(req *RegisterRequest) (*AuthResponse, error) {
 		Email:    req.Email,
 		Phone:    req.Phone,
 		Password: string(hashedPassword),
-		Role:     repositories.RoleCustomer,
+		Role:     userRole,
 		IsActive: true,
 	}
 

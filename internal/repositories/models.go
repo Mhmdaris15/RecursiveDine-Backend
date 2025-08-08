@@ -83,7 +83,11 @@ type Order struct {
 	UserID        uint        `json:"user_id" gorm:"not null"`
 	TableID       uint        `json:"table_id" gorm:"not null"`
 	Status        OrderStatus `json:"status" gorm:"not null;default:pending"`
-	TotalAmount   float64     `json:"total_amount" gorm:"not null"`
+	SubtotalAmount float64    `json:"subtotal_amount" gorm:"not null"` // Amount before tax
+	VATAmount     float64     `json:"vat_amount" gorm:"not null;default:0"` // VAT 10% in Indonesia
+	TotalAmount   float64     `json:"total_amount" gorm:"not null"` // Final amount including VAT
+	CustomerName  string      `json:"customer_name" gorm:"type:varchar(255)"`
+	CashierName   string      `json:"cashier_name" gorm:"type:varchar(255)"`
 	SpecialNotes  string      `json:"special_notes"`
 	CreatedAt     time.Time   `json:"created_at"`
 	UpdatedAt     time.Time   `json:"updated_at"`

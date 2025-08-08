@@ -24,6 +24,39 @@ type CreateOrderItemRequest struct {
 	SpecialRequest string `json:"special_request"`
 }
 
+type CashierOrderRequest struct {
+	TableID      uint                     `json:"table_id" binding:"required"`
+	CustomerName string                   `json:"customer_name" binding:"required"`
+	CashierName  string                   `json:"cashier_name" binding:"required"`
+	SpecialNotes string                   `json:"special_notes"`
+	Items        []CreateOrderItemRequest `json:"items" binding:"required,dive"`
+}
+
+type OrderResponse struct {
+	ID             uint                    `json:"id"`
+	UserID         uint                    `json:"user_id"`
+	TableID        uint                    `json:"table_id"`
+	Status         repositories.OrderStatus `json:"status"`
+	SubtotalAmount float64                 `json:"subtotal_amount"`
+	VATAmount      float64                 `json:"vat_amount"`
+	TotalAmount    float64                 `json:"total_amount"`
+	CustomerName   string                  `json:"customer_name,omitempty"`
+	CashierName    string                  `json:"cashier_name,omitempty"`
+	SpecialNotes   string                  `json:"special_notes"`
+	CreatedAt      string                  `json:"created_at"`
+	OrderItems     []OrderItemResponse     `json:"order_items"`
+}
+
+type OrderItemResponse struct {
+	ID             uint    `json:"id"`
+	MenuItemID     uint    `json:"menu_item_id"`
+	MenuItemName   string  `json:"menu_item_name"`
+	Quantity       int     `json:"quantity"`
+	UnitPrice      float64 `json:"unit_price"`
+	TotalPrice     float64 `json:"total_price"`
+	SpecialRequest string  `json:"special_request"`
+}
+
 func NewOrderService(orderRepo *repositories.OrderRepository, menuRepo *repositories.MenuRepository) *OrderService {
 	return &OrderService{
 		orderRepo: orderRepo,
@@ -270,4 +303,117 @@ func (s *OrderService) UpdateOrderItems(orderID uint, items []repositories.Order
 	}
 
 	return s.orderRepo.GetByIDWithDetails(orderID)
+}
+
+// CreateCashierOrder creates an order through cashier with VAT calculation
+func (s *OrderService) CreateCashierOrder(cashierUserID uint, req *CashierOrderRequest) (*OrderResponse, error) {
+	// Validate menu items
+	menuItemIDs := make([]uint, len(req.Items))
+	for i, item := range req.Items {
+		menuItemIDs[i] = item.MenuItemID
+	}
+
+	menuItems, err := s.menuRepo.GetMenuItemsByIDs(menuItemIDs)
+	if err != nil {
+		return nil, errors.New("failed to fetch menu items")
+	}
+
+	if len(menuItems) != len(req.Items) {
+		return nil, errors.New("some menu items are not available")
+	}
+
+	// Create menu items map for easy lookup
+	menuItemMap := make(map[uint]*repositories.MenuItem)
+	for _, item := range menuItems {
+		menuItemMap[item.ID] = &item
+	}
+
+	// Calculate subtotal
+	var subtotal float64
+	for _, orderItem := range req.Items {
+		menuItem := menuItemMap[orderItem.MenuItemID]
+		if !menuItem.IsAvailable {
+			return nil, fmt.Errorf("menu item %s is not available", menuItem.Name)
+		}
+		subtotal += menuItem.Price * float64(orderItem.Quantity)
+	}
+
+	// Calculate VAT (10% for Indonesia)
+	const vatRate = 0.10
+	vatAmount := subtotal * vatRate
+	totalAmount := subtotal + vatAmount
+
+	createdOrder := &repositories.Order{
+		UserID:         cashierUserID,
+		TableID:        req.TableID,
+		Status:         repositories.OrderStatusPending,
+		SubtotalAmount: subtotal,
+		VATAmount:      vatAmount,
+		TotalAmount:    totalAmount,
+		CustomerName:   req.CustomerName,
+		CashierName:    req.CashierName,
+		SpecialNotes:   req.SpecialNotes,
+	}
+
+	err = s.orderRepo.Create(createdOrder)
+	if err != nil {
+		return nil, errors.New("failed to create order")
+	}
+
+	// Create order items
+	for _, item := range req.Items {
+		menuItem := menuItemMap[item.MenuItemID]
+		totalPrice := menuItem.Price * float64(item.Quantity)
+
+		orderItem := &repositories.OrderItem{
+			OrderID:        createdOrder.ID,
+			MenuItemID:     item.MenuItemID,
+			Quantity:       item.Quantity,
+			UnitPrice:      menuItem.Price,
+			TotalPrice:     totalPrice,
+			SpecialRequest: item.SpecialRequest,
+		}
+
+		err = s.orderRepo.CreateOrderItem(orderItem)
+		if err != nil {
+			return nil, errors.New("failed to create order items")
+		}
+	}
+
+	// Fetch the complete order with items for response
+	completeOrder, err := s.orderRepo.GetByID(createdOrder.ID)
+	if err != nil {
+		return nil, errors.New("failed to fetch created order")
+	}
+
+	// Build response
+	orderItemResponses := make([]OrderItemResponse, len(completeOrder.OrderItems))
+	for i, item := range completeOrder.OrderItems {
+		orderItemResponses[i] = OrderItemResponse{
+			ID:             item.ID,
+			MenuItemID:     item.MenuItemID,
+			MenuItemName:   item.MenuItem.Name,
+			Quantity:       item.Quantity,
+			UnitPrice:      item.UnitPrice,
+			TotalPrice:     item.TotalPrice,
+			SpecialRequest: item.SpecialRequest,
+		}
+	}
+
+	response := &OrderResponse{
+		ID:             completeOrder.ID,
+		UserID:         completeOrder.UserID,
+		TableID:        completeOrder.TableID,
+		Status:         completeOrder.Status,
+		SubtotalAmount: completeOrder.SubtotalAmount,
+		VATAmount:      completeOrder.VATAmount,
+		TotalAmount:    completeOrder.TotalAmount,
+		CustomerName:   completeOrder.CustomerName,
+		CashierName:    completeOrder.CashierName,
+		SpecialNotes:   completeOrder.SpecialNotes,
+		CreatedAt:      completeOrder.CreatedAt.Format("2006-01-02 15:04:05"),
+		OrderItems:     orderItemResponses,
+	}
+
+	return response, nil
 }
