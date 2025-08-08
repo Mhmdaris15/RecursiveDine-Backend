@@ -55,7 +55,7 @@ Your API will be available at: `http://localhost:8002`
 Once development environment is running:
 
 - **API Server**: http://localhost:8002
-- **PostgreSQL**: localhost:5432 (user: postgres, password: postgres, db: recursivedine)
+- **PostgreSQL**: localhost:5432 (user: postgres, password: postgres, db: recursive_dine)
 - **Redis**: localhost:6379
 - **Prometheus**: http://localhost:9090
 - **Grafana**: http://localhost:3000 (admin/admin)
@@ -144,7 +144,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=postgres
-DB_NAME=recursivedine
+DB_NAME=recursive_dine
 DB_SSL_MODE=disable
 
 # Redis Configuration (Docker)
@@ -231,7 +231,7 @@ docker-compose -f docker-compose.dev.yml ps
 
 ```bash
 # Connect to PostgreSQL
-docker exec -it recursivedine-postgres-dev psql -U postgres -d recursivedine
+docker exec -it recursivedine-postgres-dev psql -U postgres -d recursive_dine
 
 # Connect to Redis
 docker exec -it recursivedine-redis-dev redis-cli

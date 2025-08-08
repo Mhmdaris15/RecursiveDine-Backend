@@ -18,7 +18,7 @@ sleep 10
 
 # Check if PostgreSQL is ready
 echo "Checking PostgreSQL connection..."
-while ! docker exec recursivedine-postgres-dev pg_isready -U postgres -d recursivedine >/dev/null 2>&1; do
+while ! docker exec recursivedine-postgres-dev pg_isready -U postgres -d recursive_dine >/dev/null 2>&1; do
     echo "Waiting for PostgreSQL to be ready..."
     sleep 2
 done

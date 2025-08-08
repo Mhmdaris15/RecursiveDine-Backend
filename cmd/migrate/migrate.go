@@ -83,7 +83,7 @@ func getDBConnection() *sql.DB {
 	port := getEnv("DB_PORT", "5432")
 	user := getEnv("DB_USER", "postgres")
 	password := getEnv("DB_PASSWORD", "postgres")
-	dbname := getEnv("DB_NAME", "recursivedine")
+	dbname := getEnv("DB_NAME", "recursive_dine")
 	sslmode := getEnv("DB_SSL_MODE", "disable")
 
 	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",

@@ -18,7 +18,7 @@ timeout /t 10 /nobreak > NUL
 REM Check if PostgreSQL is ready
 echo Checking PostgreSQL connection...
 :POSTGRES_CHECK
-docker exec recursivedine-postgres-dev pg_isready -U postgres -d recursivedine > NUL 2>&1
+docker exec recursivedine-postgres-dev pg_isready -U postgres -d recursive_dine > NUL 2>&1
 if %ERRORLEVEL% neq 0 (
     echo Waiting for PostgreSQL to be ready...
     timeout /t 2 /nobreak > NUL

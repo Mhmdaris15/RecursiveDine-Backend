@@ -55,7 +55,7 @@ func Load() (*Config, error) {
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBUser:     getEnv("DB_USER", "postgres"),
 		DBPassword: getEnv("DB_PASSWORD", "postgres"),
-		DBName:     getEnv("DB_NAME", "recursivedine"),
+		DBName:     getEnv("DB_NAME", "recursive_dine"),
 
 		JWTSecret:          getEnv("JWT_SECRET", "recursive_dine_key_secret"),
 		JWTExpirationHours: getEnvInt("JWT_EXPIRATION_HOURS", 24),

@@ -151,7 +151,7 @@ RecursiveDine/
    - Production: Uses `.env` file
 
 2. **Database Name**:
-   - Development: `recursivedine`
+   - Development: `recursive_dine`
    - Make sure migration tool and app use same database
 
 3. **Port Conflicts**:
