@@ -1,6 +1,9 @@
 -- Initial schema migration
 -- Created: 2025-08-08
 
+-- Connect to the recursive_dine database
+\c recursive_dine;
+
 -- Create users table
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,

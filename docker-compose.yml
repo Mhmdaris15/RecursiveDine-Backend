@@ -36,16 +36,19 @@ services:
   postgres:
     image: postgres:15
     environment:
-      - POSTGRES_DB=recursive_dine
+      - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
+      - ./docker-init/000_create_database.sql:/docker-entrypoint-initdb.d/000_create_database.sql
+      - ./migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+      - ./migrations/002_add_user_fields.sql:/docker-entrypoint-initdb.d/002_add_user_fields.sql
+      - ./migrations/003_add_vat_and_cashier_fields.sql:/docker-entrypoint-initdb.d/003_add_vat_and_cashier_fields.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d recursive_dine"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
