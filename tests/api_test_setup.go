@@ -9,12 +9,13 @@ import (
 	"os"
 	"testing"
 
-	"golang.org/x/crypto/bcrypt"
 	"recursiveDine/internal/config"
 	"recursiveDine/internal/controllers"
 	"recursiveDine/internal/middleware"
 	"recursiveDine/internal/repositories"
 	"recursiveDine/internal/services"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/suite"
@@ -24,18 +25,18 @@ import (
 
 type APITestSuite struct {
 	suite.Suite
-	router      *gin.Engine
-	db          *gorm.DB
-	adminToken  string
-	staffToken  string
-	cashierToken string
+	router        *gin.Engine
+	db            *gorm.DB
+	adminToken    string
+	staffToken    string
+	cashierToken  string
 	customerToken string
 }
 
 // SetupSuite runs before all tests
 func (suite *APITestSuite) SetupSuite() {
 	fmt.Println("SetupSuite starting...")
-	
+
 	// Set test environment
 	os.Setenv("ENVIRONMENT", "test")
 	gin.SetMode(gin.TestMode)
@@ -92,7 +93,7 @@ func (suite *APITestSuite) SetupSuite() {
 
 	// Create test users and get tokens
 	suite.createTestUsers(authService)
-	
+
 	fmt.Println("SetupSuite completed successfully")
 }
 
@@ -255,7 +256,7 @@ func setupTestRouter(cfg *config.Config, authController *controllers.AuthControl
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
-	
+
 	// Use minimal middleware for testing
 	router.Use(gin.Recovery())
 
@@ -268,7 +269,7 @@ func setupTestRouter(cfg *config.Config, authController *controllers.AuthControl
 			auth.POST("/login", authController.Login)
 			auth.POST("/register", authController.Register)
 			auth.POST("/refresh", authController.RefreshToken)
-			auth.POST("/logout", middleware.AuthMiddleware(), authController.Logout)
+			auth.POST("/logout", middleware.AuthMiddleware(cfg), authController.Logout)
 		}
 
 		// Table routes
@@ -287,7 +288,7 @@ func setupTestRouter(cfg *config.Config, authController *controllers.AuthControl
 
 		// Order routes
 		orders := api.Group("/orders")
-		orders.Use(middleware.AuthMiddleware())
+		orders.Use(middleware.AuthMiddleware(cfg))
 		{
 			orders.POST("", orderController.CreateOrder)
 			orders.GET("/:id", orderController.GetOrder)
@@ -297,7 +298,7 @@ func setupTestRouter(cfg *config.Config, authController *controllers.AuthControl
 
 		// Payment routes
 		payments := api.Group("/payments")
-		payments.Use(middleware.AuthMiddleware())
+		payments.Use(middleware.AuthMiddleware(cfg))
 		{
 			payments.POST("/qris", paymentController.InitiateQRISPayment)
 			payments.POST("/verify", paymentController.VerifyPayment)
@@ -306,7 +307,7 @@ func setupTestRouter(cfg *config.Config, authController *controllers.AuthControl
 
 		// Admin routes
 		admin := api.Group("/admin")
-		admin.Use(middleware.AuthMiddleware())
+		admin.Use(middleware.AuthMiddleware(cfg))
 		admin.Use(middleware.RoleMiddleware("admin"))
 		{
 			// User management
@@ -371,7 +372,7 @@ func setupTestRouter(cfg *config.Config, authController *controllers.AuthControl
 
 		// Staff routes (staff and admin access)
 		staff := api.Group("/staff")
-		staff.Use(middleware.AuthMiddleware())
+		staff.Use(middleware.AuthMiddleware(cfg))
 		staff.Use(middleware.RoleMiddleware("staff", "admin"))
 		{
 			// Order management for staff
@@ -391,7 +392,7 @@ func setupTestRouter(cfg *config.Config, authController *controllers.AuthControl
 
 		// Cashier routes (cashier and admin access)
 		cashier := api.Group("/cashier")
-		cashier.Use(middleware.AuthMiddleware())
+		cashier.Use(middleware.AuthMiddleware(cfg))
 		cashier.Use(middleware.RoleMiddleware("cashier", "admin"))
 		{
 			// Cash payment processing

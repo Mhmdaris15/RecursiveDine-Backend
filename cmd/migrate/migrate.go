@@ -1,4 +1,4 @@
-package main
+package migrate
 
 import (
 	"database/sql"
@@ -22,7 +22,7 @@ type Migration struct {
 	Content string
 }
 
-func main() {
+func Run() {
 	if len(os.Args) < 2 {
 		printUsage()
 		return
@@ -398,7 +398,7 @@ func resetDatabase() {
 
 	// Drop all tables
 	tables := []string{
-		"payments", "order_items", "orders", "menu_items", 
+		"payments", "order_items", "orders", "menu_items",
 		"menu_categories", "tables", "users", "schema_migrations",
 	}
 
