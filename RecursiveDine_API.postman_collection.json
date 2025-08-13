@@ -39,11 +39,55 @@
 							"raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"securepassword123\",\n  \"phone\": \"+1234567890\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/auth/register",
+							"raw": "{{base_url}}/api/v1/auth/register",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						}
+					}
+				},
+				{
+					"name": "Register Admin User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('admin_user_id', response.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Admin User\",\n  \"email\": \"admin@recursiveDine.com\",\n  \"password\": \"admin123456\",\n  \"phone\": \"+1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
 								"auth",
 								"register"
 							]
@@ -81,11 +125,59 @@
 							"raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"securepassword123\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/auth/login",
+							"raw": "{{base_url}}/api/v1/auth/login",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						}
+					}
+				},
+				{
+					"name": "Login Admin User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('admin_access_token', response.access_token);",
+									"    pm.environment.set('admin_refresh_token', response.refresh_token);",
+									"    pm.environment.set('admin_user_id', response.user.id);",
+									"    // Also set as default token for admin operations",
+									"    pm.environment.set('access_token', response.access_token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@recursiveDine.com\",\n  \"password\": \"admin123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"v1",
 								"auth",
 								"login"
 							]
@@ -121,11 +213,13 @@
 							"raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/auth/refresh",
+							"raw": "{{base_url}}/api/v1/auth/refresh",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"auth",
 								"refresh"
 							]
@@ -143,11 +237,13 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/auth/logout",
+							"raw": "{{base_url}}/api/v1/auth/logout",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"auth",
 								"logout"
 							]
@@ -165,11 +261,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/tables/QR123456",
+							"raw": "{{base_url}}/api/v1/tables/QR123456",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"tables",
 								"QR123456"
 							]
@@ -353,11 +451,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/menu",
+							"raw": "{{base_url}}/api/v1/menu",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"menu"
 							]
 						}
@@ -369,11 +469,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/menu/categories",
+							"raw": "{{base_url}}/api/v1/menu/categories",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"menu",
 								"categories"
 							]
@@ -386,11 +488,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/menu/items/search?q=salad&category_id=1&min_price=10&max_price=20",
+							"raw": "{{base_url}}/api/v1/menu/items/search?q=salad&category_id=1&min_price=10&max_price=20",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"menu",
 								"items",
 								"search"
@@ -577,11 +681,13 @@
 							"raw": "{\n  \"table_id\": 1,\n  \"special_notes\": \"No onions please\",\n  \"items\": [\n    {\n      \"menu_item_id\": 1,\n      \"quantity\": 2,\n      \"special_request\": \"Extra dressing\"\n    },\n    {\n      \"menu_item_id\": 5,\n      \"quantity\": 1,\n      \"special_request\": \"\"\n    }\n  ]\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/orders",
+							"raw": "{{base_url}}/api/v1/orders",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"orders"
 							]
 						}
@@ -598,11 +704,13 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/orders?page=1&limit=10&status=pending",
+							"raw": "{{base_url}}/api/v1/orders?page=1&limit=10&status=pending",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"orders"
 							],
 							"query": [
@@ -633,11 +741,13 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/orders/{{order_id}}",
+							"raw": "{{base_url}}/api/v1/orders/{{order_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"orders",
 								"{{order_id}}"
 							]
@@ -792,11 +902,13 @@
 							"raw": "{\n  \"order_id\": {{order_id}},\n  \"payment_method\": \"qris\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/payments/qris",
+							"raw": "{{base_url}}/api/v1/payments/qris",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"payments",
 								"qris"
 							]
@@ -822,11 +934,13 @@
 							"raw": "{\n  \"transaction_id\": \"{{transaction_id}}\",\n  \"external_id\": \"QRIS123456789\",\n  \"amount\": 32.97,\n  \"status\": \"success\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/payments/verify",
+							"raw": "{{base_url}}/api/v1/payments/verify",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
+								"api",
+								"v1",
 								"payments",
 								"verify"
 							]
@@ -1560,10 +1674,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/health",
+							"raw": "http://localhost:8002/health",
+							"protocol": "http",
 							"host": [
-								"{{base_url}}"
+								"localhost"
 							],
+							"port": "8002",
 							"path": [
 								"health"
 							]
@@ -1576,10 +1692,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{base_url}}/metrics",
+							"raw": "http://localhost:8002/metrics",
+							"protocol": "http",
 							"host": [
-								"{{base_url}}"
+								"localhost"
 							],
+							"port": "8002",
 							"path": [
 								"metrics"
 							]
