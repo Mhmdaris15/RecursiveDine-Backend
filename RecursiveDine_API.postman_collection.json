@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
 		"name": "RecursiveDine API",
-		"description": "Complete API collection for RecursiveDine restaurant self-service ordering system",
+		"description": "Complete API collection for RecursiveDine restaurant self-service ordering system with comprehensive user management, advanced filtering, statistics, and role-based access control",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},
@@ -1020,7 +1020,7 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/admin/users?page=1&limit=10&role=customer",
+							"raw": "{{base_url}}/admin/users?page=1&limit=10&role=customer&search=john&status=active",
 							"host": [
 								"{{base_url}}"
 							],
@@ -1031,22 +1031,72 @@
 							"query": [
 								{
 									"key": "page",
-									"value": "1"
+									"value": "1",
+									"description": "Page number (default: 1)"
 								},
 								{
 									"key": "limit",
-									"value": "10"
+									"value": "10",
+									"description": "Items per page (default: 10, max: 100)"
 								},
 								{
 									"key": "role",
-									"value": "customer"
+									"value": "customer",
+									"description": "Filter by role (customer, staff, cashier, admin)"
+								},
+								{
+									"key": "search",
+									"value": "john",
+									"description": "Search by name, username, or email"
+								},
+								{
+									"key": "status",
+									"value": "active",
+									"description": "Filter by status (active, inactive, all)"
 								}
 							]
 						}
 					}
 				},
 				{
+					"name": "Get User by ID (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/users/{{user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"{{user_id}}"
+							]
+						}
+					}
+				},
+				{
 					"name": "Create User (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('created_user_id', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "POST",
 						"header": [
@@ -1061,7 +1111,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"securepassword123\",\n  \"phone\": \"+1234567891\",\n  \"role\": \"staff\"\n}"
+							"raw": "{\n  \"username\": \"jane_smith\",\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"securepassword123\",\n  \"phone\": \"+1234567891\",\n  \"role\": \"staff\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/admin/users",
@@ -1091,17 +1141,167 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"name\": \"Jane Smith Updated\",\n  \"email\": \"jane.updated@example.com\",\n  \"phone\": \"+1234567892\",\n  \"role\": \"cashier\"\n}"
+							"raw": "{\n  \"username\": \"jane_smith_updated\",\n  \"name\": \"Jane Smith Updated\",\n  \"email\": \"jane.updated@example.com\",\n  \"phone\": \"+1234567892\",\n  \"role\": \"cashier\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/admin/users/{{user_id}}",
+							"raw": "{{base_url}}/admin/users/{{created_user_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"admin",
 								"users",
-								"{{user_id}}"
+								"{{created_user_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update User Status (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"is_active\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/users/{{created_user_id}}/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"{{created_user_id}}",
+								"status"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update User Role (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"role\": \"cashier\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/users/{{created_user_id}}/role",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"{{created_user_id}}",
+								"role"
+							]
+						}
+					}
+				},
+				{
+					"name": "Reset User Password (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"password\": \"newSecurePassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/users/{{created_user_id}}/password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"{{created_user_id}}",
+								"password"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get User Statistics (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/users/statistics",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"statistics"
+							]
+						}
+					}
+				},
+				{
+					"name": "Bulk Update Users (Admin)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_ids\": [1, 2, 3, 4],\n  \"updates\": {\n    \"is_active\": true,\n    \"role\": \"staff\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/admin/users/bulk",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"admin",
+								"users",
+								"bulk"
 							]
 						}
 					}
@@ -1117,14 +1317,234 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/admin/users/{{user_id}}",
+							"raw": "{{base_url}}/admin/users/{{created_user_id}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"admin",
 								"users",
-								"{{user_id}}"
+								"{{created_user_id}}"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Cashier Operations",
+			"item": [
+				{
+					"name": "Create Cashier Order with VAT",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('cashier_order_id', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"table_id\": 1,\n  \"customer_name\": \"John Doe\",\n  \"cashier_name\": \"Cashier One\",\n  \"special_notes\": \"Extra spicy\",\n  \"items\": [\n    {\n      \"menu_item_id\": 1,\n      \"quantity\": 2,\n      \"special_request\": \"Extra sauce\"\n    },\n    {\n      \"menu_item_id\": 2,\n      \"quantity\": 1,\n      \"special_request\": \"\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/cashier/orders",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"cashier",
+								"orders"
+							]
+						}
+					}
+				},
+				{
+					"name": "Process Cash Payment (Cashier)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"order_id\": {{cashier_order_id}},\n  \"amount_paid\": 35.00,\n  \"change_amount\": 0.93\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/cashier/payments/cash",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"cashier",
+								"payments",
+								"cash"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Cashier Payments",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/cashier/payments?page=1&limit=10&status=completed&method=cash",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"cashier",
+								"payments"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "completed"
+								},
+								{
+									"key": "method",
+									"value": "cash"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Process Refund (Cashier)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 34.07,\n  \"reason\": \"Customer complaint - food quality\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/cashier/payments/{{payment_id}}/refund",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"cashier",
+								"payments",
+								"{{payment_id}}",
+								"refund"
+							]
+						}
+					}
+				},
+				{
+					"name": "Reconcile Cash Payments (Cashier)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"actual_cash_amount\": 450.75,\n  \"expected_cash_amount\": 455.00,\n  \"shift_start_time\": \"2025-08-13T08:00:00Z\",\n  \"shift_end_time\": \"2025-08-13T16:00:00Z\",\n  \"notes\": \"5 dollar bill missing, investigating\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/cashier/payments/reconcile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"cashier",
+								"payments",
+								"reconcile"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Payment Statistics (Cashier)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/cashier/payments/statistics?from=2025-08-01&to=2025-08-13&method=cash",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"cashier",
+								"payments",
+								"statistics"
+							],
+							"query": [
+								{
+									"key": "from",
+									"value": "2025-08-01"
+								},
+								{
+									"key": "to",
+									"value": "2025-08-13"
+								},
+								{
+									"key": "method",
+									"value": "cash"
+								}
 							]
 						}
 					}

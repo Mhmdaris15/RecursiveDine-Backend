@@ -82,7 +82,7 @@ func main() {
 	paymentController := controllers.NewPaymentController(paymentService)
 	kitchenController := controllers.NewKitchenController(kitchenService)
 	seedController := controllers.NewSeedController(seedService)
-	
+
 	// Initialize CRUD controllers
 	userController := controllers.NewUserController(userService)
 	orderManagementController := controllers.NewOrderManagementController(orderService)
@@ -127,10 +127,10 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 	fmt.Printf("Password: '%s'\n", cfg.DBPassword)
 	fmt.Printf("Database: '%s'\n", cfg.DBName)
 	fmt.Printf("Port: '%s'\n", cfg.DBPort)
-	
+
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBPort)
-	
+
 	fmt.Printf("DSN: %s\n", dsn)
 
 	// Retry database connection up to 10 times with increasing delays
@@ -153,14 +153,14 @@ func initDatabase(cfg *config.Config) (*gorm.DB, error) {
 				err = sqlErr
 			}
 		}
-		
+
 		if i < maxRetries-1 {
 			waitTime := time.Duration(i+1) * 2 * time.Second
 			fmt.Printf("Database connection attempt %d failed: %v. Retrying in %v...\n", i+1, err, waitTime)
 			time.Sleep(waitTime)
 		}
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database after %d attempts: %v", maxRetries, err)
 	}
@@ -261,10 +261,15 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 			users.Use(middleware.RoleMiddleware("admin"))
 			{
 				users.GET("", userController.GetAllUsers)
+				users.GET("/statistics", userController.GetUserStatistics)
 				users.GET("/:id", userController.GetUserByID)
 				users.POST("", userController.CreateUser)
 				users.PUT("/:id", userController.UpdateUser)
 				users.DELETE("/:id", userController.DeleteUser)
+				users.PATCH("/:id/status", userController.UpdateUserStatus)
+				users.PATCH("/:id/role", userController.UpdateUserRole)
+				users.PATCH("/:id/password", userController.ResetUserPassword)
+				users.PATCH("/bulk", userController.BulkUpdateUsers)
 			}
 
 			// Table management (admin only)

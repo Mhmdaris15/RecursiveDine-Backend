@@ -10,6 +10,7 @@ http://localhost:8002/api/v1
 
 ## Key Features
 - **Multi-role Authentication**: Customer, Staff, Cashier, and Admin roles
+- **Advanced User Management**: Comprehensive admin controls with filtering, search, statistics, and bulk operations
 - **VAT Calculation**: Automatic 10% Indonesian VAT on cashier orders
 - **Real-time Updates**: WebSocket support for kitchen operations
 - **Payment Processing**: QRIS and cash payment methods
@@ -17,6 +18,7 @@ http://localhost:8002/api/v1
 - **Table Management**: QR code-based table system
 - **Rate Limiting**: Built-in API protection
 - **Comprehensive Logging**: Request/response monitoring
+- **Security Features**: Role-based access control, password hashing, account protection
 
 ## Authentication
 Most endpoints require JWT authentication. Include the token in the Authorization header:
@@ -783,12 +785,14 @@ Get payment statistics (Admin/Cashier).
 ## 6. User Management (Admin Only)
 
 ### GET /admin/users
-Get all users with pagination.
+Get all users with advanced filtering, pagination, and search.
 
 **Query Parameters:**
 - `page`: Page number (default: 1)
-- `limit`: Items per page (default: 10)
+- `limit`: Items per page (default: 10, max: 100)
 - `role`: Filter by role (customer, staff, cashier, admin)
+- `search`: Search by name, username, or email
+- `status`: Filter by status (active, inactive, all - default: all)
 
 **Response (200):**
 ```json
@@ -796,27 +800,53 @@ Get all users with pagination.
   "users": [
     {
       "id": 1,
+      "username": "john_doe",
       "name": "John Doe",
       "email": "john@example.com",
       "phone": "+1234567890",
       "role": "customer",
-      "created_at": "2025-07-20T10:00:00Z",
-      "last_login": "2025-07-20T14:30:00Z"
+      "is_active": true,
+      "created_at": "2025-08-13T10:00:00Z",
+      "updated_at": "2025-08-13T10:00:00Z"
     }
   ],
   "total": 50,
   "page": 1,
   "limit": 10,
-  "total_pages": 5
+  "total_pages": 5,
+  "filters": {
+    "role": "customer",
+    "search": "john",
+    "status": "active"
+  }
+}
+```
+
+### GET /admin/users/{id}
+Get specific user details by ID.
+
+**Response (200):**
+```json
+{
+  "id": 1,
+  "username": "john_doe",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "+1234567890",
+  "role": "customer",
+  "is_active": true,
+  "created_at": "2025-08-13T10:00:00Z",
+  "updated_at": "2025-08-13T10:00:00Z"
 }
 ```
 
 ### POST /admin/users
-Create a new user.
+Create a new user account.
 
 **Request Body:**
 ```json
 {
+  "username": "jane_smith",
   "name": "Jane Smith",
   "email": "jane@example.com",
   "password": "securepassword123",
@@ -825,12 +855,28 @@ Create a new user.
 }
 ```
 
+**Response (201):**
+```json
+{
+  "id": 2,
+  "username": "jane_smith",
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "phone": "+1234567891",
+  "role": "staff",
+  "is_active": true,
+  "created_at": "2025-08-13T10:00:00Z",
+  "updated_at": "2025-08-13T10:00:00Z"
+}
+```
+
 ### PUT /admin/users/{id}
-Update user information.
+Update user information completely.
 
 **Request Body:**
 ```json
 {
+  "username": "jane_smith_updated",
   "name": "Jane Smith Updated",
   "email": "jane.updated@example.com",
   "phone": "+1234567892",
@@ -838,8 +884,23 @@ Update user information.
 }
 ```
 
+**Response (200):**
+```json
+{
+  "id": 2,
+  "username": "jane_smith_updated",
+  "name": "Jane Smith Updated",
+  "email": "jane.updated@example.com",
+  "phone": "+1234567892",
+  "role": "cashier",
+  "is_active": true,
+  "created_at": "2025-08-13T10:00:00Z",
+  "updated_at": "2025-08-13T11:00:00Z"
+}
+```
+
 ### DELETE /admin/users/{id}
-Soft delete a user.
+Soft delete a user (cannot delete own account).
 
 **Response (200):**
 ```json
@@ -847,6 +908,135 @@ Soft delete a user.
   "message": "User deleted successfully"
 }
 ```
+
+### PATCH /admin/users/{id}/status
+Activate or deactivate user account.
+
+**Request Body:**
+```json
+{
+  "is_active": false
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "User deactivated successfully"
+}
+```
+
+### PATCH /admin/users/{id}/role
+Update user role (cannot change own role).
+
+**Request Body:**
+```json
+{
+  "role": "cashier"
+}
+```
+
+**Response (200):**
+```json
+{
+  "id": 2,
+  "username": "jane_smith",
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "phone": "+1234567891",
+  "role": "cashier",
+  "is_active": true,
+  "created_at": "2025-08-13T10:00:00Z",
+  "updated_at": "2025-08-13T11:30:00Z"
+}
+```
+
+### PATCH /admin/users/{id}/password
+Reset user password.
+
+**Request Body:**
+```json
+{
+  "password": "newSecurePassword123"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Password reset successfully"
+}
+```
+
+### GET /admin/users/statistics
+Get comprehensive user statistics.
+
+**Response (200):**
+```json
+{
+  "total_users": 150,
+  "users_by_role": {
+    "customer": 120,
+    "staff": 20,
+    "cashier": 8,
+    "admin": 2
+  },
+  "users_by_status": {
+    "active": 145,
+    "inactive": 5
+  },
+  "recent_registrations": [
+    {
+      "date": "2025-08-13",
+      "count": 5
+    },
+    {
+      "date": "2025-08-12",
+      "count": 3
+    }
+  ],
+  "role_distribution_percentage": {
+    "customer": 80.0,
+    "staff": 13.3,
+    "cashier": 5.3,
+    "admin": 1.4
+  }
+}
+```
+
+### PATCH /admin/users/bulk
+Bulk update multiple users.
+
+**Request Body:**
+```json
+{
+  "user_ids": [1, 2, 3, 4],
+  "updates": {
+    "is_active": true,
+    "role": "staff"
+  }
+}
+```
+
+**Response (200):**
+```json
+{
+  "updated_count": 3,
+  "failed_count": 1,
+  "failed_users": [
+    {
+      "user_id": 1,
+      "error": "Cannot change admin user role"
+    }
+  ],
+  "message": "Bulk update completed: 3 users updated, 1 failed"
+}
+```
+
+**Error Responses:**
+- **400**: Invalid user ID, validation errors, cannot modify own account
+- **404**: User not found
+- **409**: Username or email already exists (for creation/updates)
 
 ---
 
