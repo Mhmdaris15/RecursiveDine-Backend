@@ -1109,7 +1109,514 @@
 			]
 		},
 		{
-			"name": "9. Error Handling & Edge Cases",
+			"name": "9. User Management",
+			"item": [
+				{
+					"name": "Get All Users (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users?page=1&limit=10&role=customer&status=active",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "role",
+									"value": "customer"
+								},
+								{
+									"key": "status",
+									"value": "active"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Get all users returns 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Users list is returned\", function () {",
+									"    pm.expect(responseJson).to.have.property('users');",
+									"    pm.expect(responseJson.users).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"Pagination info is included\", function () {",
+									"    pm.expect(responseJson).to.have.property('total');",
+									"    pm.expect(responseJson).to.have.property('page');",
+									"    pm.expect(responseJson).to.have.property('limit');",
+									"});",
+									"",
+									"// Store first user ID for other tests",
+									"if (responseJson.users && responseJson.users.length > 0) {",
+									"    pm.environment.set('test_user_id', responseJson.users[0].id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get User Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users/statistics",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users", "statistics"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"User statistics returns 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Statistics data is complete\", function () {",
+									"    pm.expect(responseJson).to.have.property('total_users');",
+									"    pm.expect(responseJson).to.have.property('users_by_role');",
+									"    pm.expect(responseJson).to.have.property('users_by_status');",
+									"    pm.expect(responseJson).to.have.property('recent_registrations');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Create New User (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test Staff User\",\n  \"email\": \"teststaff@recursivedine.com\",\n  \"phone\": \"+628123456789\",\n  \"password\": \"teststaff123\",\n  \"role\": \"staff\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Create user returns 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Created user data is returned\", function () {",
+									"    pm.expect(responseJson).to.have.property('user');",
+									"    pm.expect(responseJson.user).to.have.property('id');",
+									"    pm.expect(responseJson.user.email).to.eql('teststaff@recursivedine.com');",
+									"    pm.expect(responseJson.user.role).to.eql('staff');",
+									"});",
+									"",
+									"// Store created user ID for update/delete tests",
+									"pm.environment.set('created_user_id', responseJson.user.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users/{{created_user_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users", "{{created_user_id}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Get user by ID returns 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"User details are returned\", function () {",
+									"    pm.expect(responseJson).to.have.property('user');",
+									"    pm.expect(responseJson.user).to.have.property('id');",
+									"    pm.expect(responseJson.user).to.have.property('name');",
+									"    pm.expect(responseJson.user).to.have.property('email');",
+									"    pm.expect(responseJson.user).to.have.property('role');",
+									"    pm.expect(responseJson.user).to.have.property('is_active');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update User Information",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Staff User\",\n  \"email\": \"updatedstaff@recursivedine.com\",\n  \"phone\": \"+628987654321\",\n  \"role\": \"staff\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users/{{created_user_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users", "{{created_user_id}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Update user returns 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Updated user data is returned\", function () {",
+									"    pm.expect(responseJson).to.have.property('user');",
+									"    pm.expect(responseJson.user.name).to.eql('Updated Staff User');",
+									"    pm.expect(responseJson.user.email).to.eql('updatedstaff@recursivedine.com');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update User Status",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"is_active\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users/{{created_user_id}}/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users", "{{created_user_id}}", "status"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Update status returns 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"User status is updated\", function () {",
+									"    pm.expect(responseJson).to.have.property('user');",
+									"    pm.expect(responseJson.user.is_active).to.eql(false);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update User Role",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"role\": \"cashier\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users/{{created_user_id}}/role",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users", "{{created_user_id}}", "role"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Update role returns 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"User role is updated\", function () {",
+									"    pm.expect(responseJson).to.have.property('user');",
+									"    pm.expect(responseJson.user.role).to.eql('cashier');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Reset User Password",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"new_password\": \"newpassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users/{{created_user_id}}/password",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users", "{{created_user_id}}", "password"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Reset password returns 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Password reset confirmation\", function () {",
+									"    pm.expect(responseJson).to.have.property('message');",
+									"    pm.expect(responseJson.message).to.include('password');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Bulk Update Users",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_ids\": [{{created_user_id}}],\n  \"updates\": {\n    \"is_active\": true\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users/bulk",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users", "bulk"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Bulk update returns 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Bulk update results\", function () {",
+									"    pm.expect(responseJson).to.have.property('updated_count');",
+									"    pm.expect(responseJson.updated_count).to.be.above(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Search Users by Name",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users?search=Updated&page=1&limit=5",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users"],
+							"query": [
+								{
+									"key": "search",
+									"value": "Updated"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Search users returns 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Search results contain expected user\", function () {",
+									"    pm.expect(responseJson).to.have.property('users');",
+									"    if (responseJson.users.length > 0) {",
+									"        const foundUser = responseJson.users.find(user => user.name.includes('Updated'));",
+									"        pm.expect(foundUser).to.not.be.undefined;",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Delete User (Cleanup)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/admin/users/{{created_user_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "admin", "users", "{{created_user_id}}"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Delete user returns 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Delete confirmation message\", function () {",
+									"    pm.expect(responseJson).to.have.property('message');",
+									"    pm.expect(responseJson.message).to.include('deleted');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "10. Error Handling & Edge Cases",
 			"item": [
 				{
 					"name": "Create Order with Invalid Table",
