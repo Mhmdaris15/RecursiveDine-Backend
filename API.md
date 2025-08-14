@@ -11,10 +11,11 @@ http://localhost:8002/api/v1
 ## Key Features
 - **Multi-role Authentication**: Customer, Staff, Cashier, and Admin roles
 - **Advanced User Management**: Comprehensive admin controls with filtering, search, statistics, and bulk operations
+- **Order Type Support**: Dine-in and takeaway orders with appropriate validation and workflows
 - **VAT Calculation**: Automatic 10% Indonesian VAT on cashier orders
 - **Real-time Updates**: WebSocket support for kitchen operations
 - **Payment Processing**: QRIS and cash payment methods
-- **Order Management**: Complete order lifecycle tracking
+- **Order Management**: Complete order lifecycle tracking with type-specific filtering
 - **Table Management**: QR code-based table system
 - **Rate Limiting**: Built-in API protection
 - **Comprehensive Logging**: Request/response monitoring
@@ -348,10 +349,11 @@ Update menu item availability (Admin/Staff).
 ### POST /orders
 Create a new order (Authenticated users).
 
-**Request Body:**
+**Request Body for Dine-In Order:**
 ```json
 {
   "table_id": 1,
+  "order_type": "dine_in",
   "special_notes": "No onions please",
   "items": [
     {
@@ -368,15 +370,34 @@ Create a new order (Authenticated users).
 }
 ```
 
+**Request Body for Takeaway Order:**
+```json
+{
+  "order_type": "takeaway",
+  "customer_phone": "+6281234567890",
+  "special_notes": "Ready for pickup",
+  "items": [
+    {
+      "menu_item_id": 1,
+      "quantity": 2,
+      "special_request": "Extra sauce"
+    }
+  ]
+}
+```
+
 **Response (201):**
 ```json
 {
   "id": 1,
   "user_id": 1,
   "table_id": 1,
+  "order_type": "dine_in",
   "status": "pending",
   "total_amount": 34.07,
   "special_notes": "No onions please",
+  "customer_phone": null,
+  "estimated_completion_time": null,
   "created_at": "2025-08-08T10:00:00Z",
   "items": [
     {
@@ -442,6 +463,92 @@ Get specific order details (Authenticated users - own orders only).
 }
 ```
 
+### GET /orders/type
+Get orders filtered by type (Admin/Staff).
+
+**Query Parameters:**
+- `type`: Required. Order type ("dine_in" or "takeaway")
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 10)
+
+**Response (200):**
+```json
+{
+  "orders": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "table_id": 1,
+      "order_type": "dine_in",
+      "status": "pending",
+      "total_amount": 34.07,
+      "special_notes": "No onions please",
+      "created_at": "2025-08-08T10:00:00Z",
+      "estimated_completion_time": null,
+      "customer_phone": null
+    }
+  ],
+  "total": 25,
+  "page": 1,
+  "limit": 10,
+  "total_pages": 3
+}
+```
+
+### GET /orders/takeaway/ready
+Get ready takeaway orders (Admin/Staff).
+
+**Response (200):**
+```json
+{
+  "orders": [
+    {
+      "id": 2,
+      "user_id": 1,
+      "table_id": null,
+      "order_type": "takeaway",
+      "status": "ready",
+      "total_amount": 28.50,
+      "customer_phone": "+6281234567890",
+      "estimated_completion_time": "2025-08-08T10:30:00Z",
+      "created_at": "2025-08-08T10:00:00Z"
+    }
+  ]
+}
+```
+
+### GET /orders/filter
+Get orders filtered by status and type (Admin/Staff).
+
+**Query Parameters:**
+- `status`: Order status (pending, confirmed, preparing, ready, served, cancelled)
+- `type`: Order type ("dine_in" or "takeaway")
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 10)
+
+**Response (200):**
+```json
+{
+  "orders": [
+    {
+      "id": 3,
+      "user_id": 2,
+      "table_id": null,
+      "order_type": "takeaway",
+      "status": "ready",
+      "total_amount": 42.30,
+      "customer_phone": "+6287654321098",
+      "estimated_completion_time": "2025-08-08T10:45:00Z",
+      "created_at": "2025-08-08T10:15:00Z"
+    }
+  ],
+  "total": 8,
+  "page": 1,
+  "limit": 10,
+  "total_pages": 1
+}
+```
+
 ### GET /admin/orders
 Get all orders with advanced filtering (Admin/Staff).
 
@@ -482,10 +589,11 @@ Get all orders with advanced filtering (Admin/Staff).
 ### POST /cashier/orders
 Create a new order with VAT calculation (Cashier/Admin only).
 
-**Request Body:**
+**Request Body for Dine-In:**
 ```json
 {
   "table_id": 1,
+  "order_type": "dine_in",
   "customer_name": "John Doe",
   "cashier_name": "Cashier One",
   "special_notes": "Extra spicy",
@@ -504,34 +612,58 @@ Create a new order with VAT calculation (Cashier/Admin only).
 }
 ```
 
+**Request Body for Takeaway:**
+```json
+{
+  "order_type": "takeaway",
+  "customer_name": "Jane Smith",
+  "customer_phone": "+6281234567890",
+  "cashier_name": "Cashier One",
+  "special_notes": "Ready for pickup",
+  "items": [
+    {
+      "menu_item_id": 1,
+      "quantity": 2,
+      "special_request": "Extra sauce"
+    }
+  ]
+}
+```
+
 **Response (201):**
 ```json
 {
-  "id": 1,
-  "user_id": 2,
-  "table_id": 1,
-  "customer_name": "John Doe",
-  "cashier_name": "Cashier One",
-  "status": "pending",
-  "subtotal": 30.97,
-  "vat_amount": 3.10,
-  "total_amount": 34.07,
-  "special_notes": "Extra spicy",
-  "created_at": "2025-08-08T10:00:00Z",
-  "items": [
-    {
-      "id": 1,
-      "menu_item_id": 1,
-      "quantity": 2,
-      "price": 8.99,
-      "special_request": "Extra sauce",
-      "menu_item": {
-        "name": "Spring Rolls",
-        "description": "Crispy spring rolls with vegetables"
+  "order": {
+    "id": 1,
+    "user_id": null,
+    "table_id": 1,
+    "order_type": "dine_in",
+    "customer_name": "John Doe",
+    "customer_phone": null,
+    "cashier_name": "Cashier One",
+    "status": "pending",
+    "subtotal_amount": 30.97,
+    "vat_amount": 3.10,
+    "total_amount": 34.07,
+    "special_notes": "Extra spicy",
+    "estimated_completion_time": null,
+    "created_at": "2025-08-08T10:00:00Z",
+    "items": [
+      {
+        "id": 1,
+        "menu_item_id": 1,
+        "quantity": 2,
+        "price": 8.99,
+        "special_request": "Extra sauce",
+        "menu_item": {
+          "name": "Spring Rolls",
+          "description": "Crispy spring rolls with vegetables"
+        }
       }
-    },
-    {
-      "id": 2,
+    ]
+  }
+}
+```
       "menu_item_id": 2,
       "quantity": 1,
       "price": 12.99,

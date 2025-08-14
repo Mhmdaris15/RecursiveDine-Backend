@@ -75,6 +75,48 @@ func (r *OrderRepository) GetByStatus(status OrderStatus, limit, offset int) ([]
 	return orders, err
 }
 
+func (r *OrderRepository) GetByOrderType(orderType OrderType, limit, offset int) ([]Order, error) {
+	var orders []Order
+	err := r.db.Where("order_type = ?", orderType).
+		Preload("User").
+		Preload("Table").
+		Preload("OrderItems").
+		Preload("OrderItems.MenuItem").
+		Preload("Payment").
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&orders).Error
+	return orders, err
+}
+
+func (r *OrderRepository) GetByStatusAndType(status OrderStatus, orderType OrderType, limit, offset int) ([]Order, error) {
+	var orders []Order
+	err := r.db.Where("status = ? AND order_type = ?", status, orderType).
+		Preload("User").
+		Preload("Table").
+		Preload("OrderItems").
+		Preload("OrderItems.MenuItem").
+		Preload("Payment").
+		Order("created_at ASC").
+		Limit(limit).
+		Offset(offset).
+		Find(&orders).Error
+	return orders, err
+}
+
+func (r *OrderRepository) GetTakeawayOrdersReady() ([]Order, error) {
+	var orders []Order
+	err := r.db.Where("order_type = ? AND status = ?", OrderTypeTakeaway, OrderStatusReady).
+		Preload("User").
+		Preload("OrderItems").
+		Preload("OrderItems.MenuItem").
+		Preload("Payment").
+		Order("estimated_completion_time ASC").
+		Find(&orders).Error
+	return orders, err
+}
+
 func (r *OrderRepository) GetAll(limit, offset int) ([]Order, error) {
 	var orders []Order
 	err := r.db.Preload("User").
@@ -148,19 +190,19 @@ func (r *OrderRepository) DeleteOrderItem(id uint) error {
 func (r *OrderRepository) GetAllOrdersPaginated(limit, offset int, status string) ([]*Order, int64, error) {
 	var orders []*Order
 	var total int64
-	
+
 	query := r.db.Model(&Order{})
-	
+
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
-	
+
 	// Get total count
 	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
-	
+
 	// Get orders with preloads
 	err = query.Preload("User").
 		Preload("Table").
@@ -171,7 +213,7 @@ func (r *OrderRepository) GetAllOrdersPaginated(limit, offset int, status string
 		Limit(limit).
 		Offset(offset).
 		Find(&orders).Error
-	
+
 	return orders, total, err
 }
 
@@ -214,7 +256,7 @@ func (r *OrderRepository) UpdateOrderItems(orderID uint, items []OrderItem) erro
 	if err != nil {
 		return err
 	}
-	
+
 	// Create new items
 	for i := range items {
 		items[i].OrderID = orderID
@@ -223,7 +265,7 @@ func (r *OrderRepository) UpdateOrderItems(orderID uint, items []OrderItem) erro
 			return err
 		}
 	}
-	
+
 	return nil
 }
 

@@ -130,8 +130,8 @@ From your Postman test run, here were the issues identified:
 7. **Applied Database Reset**:
    ```bash
    # Reset database and apply corrected migrations
-   go run cmd/migrate/migrate.go reset
-   go run cmd/migrate/migrate.go up
+   go run cmd/migrate/main.go reset
+   go run cmd/migrate/main.go up
    # ✓ Applied 3 migrations with correct password hashes
    ```
 

@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"recursiveDine/internal/repositories"
 )
@@ -13,9 +14,12 @@ type OrderService struct {
 }
 
 type CreateOrderRequest struct {
-	TableID      uint                     `json:"table_id" binding:"required"`
-	SpecialNotes string                   `json:"special_notes"`
-	Items        []CreateOrderItemRequest `json:"items" binding:"required,dive"`
+	TableID                 *uint                    `json:"table_id"` // Optional for takeaway
+	OrderType               repositories.OrderType   `json:"order_type" binding:"required"`
+	CustomerPhone           string                   `json:"customer_phone"` // Required for takeaway
+	SpecialNotes            string                   `json:"special_notes"`
+	EstimatedCompletionTime *time.Time               `json:"estimated_completion_time"` // For takeaway orders
+	Items                   []CreateOrderItemRequest `json:"items" binding:"required,dive"`
 }
 
 type CreateOrderItemRequest struct {
@@ -25,26 +29,32 @@ type CreateOrderItemRequest struct {
 }
 
 type CashierOrderRequest struct {
-	TableID      uint                     `json:"table_id" binding:"required"`
-	CustomerName string                   `json:"customer_name" binding:"required"`
-	CashierName  string                   `json:"cashier_name" binding:"required"`
-	SpecialNotes string                   `json:"special_notes"`
-	Items        []CreateOrderItemRequest `json:"items" binding:"required,dive"`
+	TableID                 *uint                    `json:"table_id"` // Optional for takeaway
+	OrderType               repositories.OrderType   `json:"order_type" binding:"required"`
+	CustomerName            string                   `json:"customer_name" binding:"required"`
+	CustomerPhone           string                   `json:"customer_phone"` // Required for takeaway
+	CashierName             string                   `json:"cashier_name" binding:"required"`
+	SpecialNotes            string                   `json:"special_notes"`
+	EstimatedCompletionTime *time.Time               `json:"estimated_completion_time"` // For takeaway orders
+	Items                   []CreateOrderItemRequest `json:"items" binding:"required,dive"`
 }
 
 type OrderResponse struct {
-	ID             uint                    `json:"id"`
-	UserID         uint                    `json:"user_id"`
-	TableID        uint                    `json:"table_id"`
-	Status         repositories.OrderStatus `json:"status"`
-	SubtotalAmount float64                 `json:"subtotal_amount"`
-	VATAmount      float64                 `json:"vat_amount"`
-	TotalAmount    float64                 `json:"total_amount"`
-	CustomerName   string                  `json:"customer_name,omitempty"`
-	CashierName    string                  `json:"cashier_name,omitempty"`
-	SpecialNotes   string                  `json:"special_notes"`
-	CreatedAt      string                  `json:"created_at"`
-	OrderItems     []OrderItemResponse     `json:"order_items"`
+	ID                      uint                     `json:"id"`
+	UserID                  uint                     `json:"user_id"`
+	TableID                 uint                     `json:"table_id,omitempty"` // Omit if null for takeaway
+	OrderType               repositories.OrderType   `json:"order_type"`
+	Status                  repositories.OrderStatus `json:"status"`
+	SubtotalAmount          float64                  `json:"subtotal_amount"`
+	VATAmount               float64                  `json:"vat_amount"`
+	TotalAmount             float64                  `json:"total_amount"`
+	CustomerName            string                   `json:"customer_name,omitempty"`
+	CustomerPhone           string                   `json:"customer_phone,omitempty"`
+	CashierName             string                   `json:"cashier_name,omitempty"`
+	SpecialNotes            string                   `json:"special_notes"`
+	EstimatedCompletionTime *string                  `json:"estimated_completion_time,omitempty"`
+	CreatedAt               string                   `json:"created_at"`
+	OrderItems              []OrderItemResponse      `json:"order_items"`
 }
 
 type OrderItemResponse struct {
@@ -65,6 +75,11 @@ func NewOrderService(orderRepo *repositories.OrderRepository, menuRepo *reposito
 }
 
 func (s *OrderService) CreateOrder(userID uint, req *CreateOrderRequest) (*repositories.Order, error) {
+	// Validate order type and required fields
+	if err := s.validateOrderRequest(req); err != nil {
+		return nil, err
+	}
+
 	// Validate menu items
 	menuItemIDs := make([]uint, len(req.Items))
 	for i, item := range req.Items {
@@ -87,7 +102,7 @@ func (s *OrderService) CreateOrder(userID uint, req *CreateOrderRequest) (*repos
 	}
 
 	// Calculate total amount and create order items
-	var totalAmount float64
+	var subtotal float64
 	orderItems := make([]repositories.OrderItem, 0, len(req.Items))
 
 	for _, item := range req.Items {
@@ -101,7 +116,7 @@ func (s *OrderService) CreateOrder(userID uint, req *CreateOrderRequest) (*repos
 		}
 
 		totalPrice := menuItem.Price * float64(item.Quantity)
-		totalAmount += totalPrice
+		subtotal += totalPrice
 
 		orderItem := repositories.OrderItem{
 			MenuItemID:     item.MenuItemID,
@@ -114,14 +129,28 @@ func (s *OrderService) CreateOrder(userID uint, req *CreateOrderRequest) (*repos
 		orderItems = append(orderItems, orderItem)
 	}
 
+	// Calculate VAT and total
+	const vatRate = 0.10
+	vatAmount := subtotal * vatRate
+	totalAmount := subtotal + vatAmount
+
 	// Create order
 	order := &repositories.Order{
-		UserID:       userID,
-		TableID:      req.TableID,
-		Status:       repositories.OrderStatusPending,
-		TotalAmount:  totalAmount,
-		SpecialNotes: req.SpecialNotes,
-		OrderItems:   orderItems,
+		UserID:                  userID,
+		OrderType:               req.OrderType,
+		Status:                  repositories.OrderStatusPending,
+		SubtotalAmount:          subtotal,
+		VATAmount:               vatAmount,
+		TotalAmount:             totalAmount,
+		CustomerPhone:           req.CustomerPhone,
+		SpecialNotes:            req.SpecialNotes,
+		EstimatedCompletionTime: req.EstimatedCompletionTime,
+		OrderItems:              orderItems,
+	}
+
+	// Set TableID only if provided (for dine-in orders)
+	if req.TableID != nil {
+		order.TableID = *req.TableID
 	}
 
 	if err := s.orderRepo.Create(order); err != nil {
@@ -130,6 +159,27 @@ func (s *OrderService) CreateOrder(userID uint, req *CreateOrderRequest) (*repos
 
 	// Return order with all relations
 	return s.orderRepo.GetByID(order.ID)
+}
+
+func (s *OrderService) validateOrderRequest(req *CreateOrderRequest) error {
+	switch req.OrderType {
+	case repositories.OrderTypeDineIn:
+		if req.TableID == nil {
+			return errors.New("table_id is required for dine-in orders")
+		}
+	case repositories.OrderTypeTakeaway:
+		if req.CustomerPhone == "" {
+			return errors.New("customer_phone is required for takeaway orders")
+		}
+		// Set estimated completion time if not provided (default 30 minutes)
+		if req.EstimatedCompletionTime == nil {
+			estimatedTime := time.Now().Add(30 * time.Minute)
+			req.EstimatedCompletionTime = &estimatedTime
+		}
+	default:
+		return errors.New("invalid order type. Must be 'dine_in' or 'takeaway'")
+	}
+	return nil
 }
 
 func (s *OrderService) GetOrderByID(orderID uint) (*repositories.Order, error) {
@@ -307,6 +357,11 @@ func (s *OrderService) UpdateOrderItems(orderID uint, items []repositories.Order
 
 // CreateCashierOrder creates an order through cashier with VAT calculation
 func (s *OrderService) CreateCashierOrder(cashierUserID uint, req *CashierOrderRequest) (*OrderResponse, error) {
+	// Validate order type and required fields
+	if err := s.validateCashierOrderRequest(req); err != nil {
+		return nil, err
+	}
+
 	// Validate menu items
 	menuItemIDs := make([]uint, len(req.Items))
 	for i, item := range req.Items {
@@ -344,15 +399,22 @@ func (s *OrderService) CreateCashierOrder(cashierUserID uint, req *CashierOrderR
 	totalAmount := subtotal + vatAmount
 
 	createdOrder := &repositories.Order{
-		UserID:         cashierUserID,
-		TableID:        req.TableID,
-		Status:         repositories.OrderStatusPending,
-		SubtotalAmount: subtotal,
-		VATAmount:      vatAmount,
-		TotalAmount:    totalAmount,
-		CustomerName:   req.CustomerName,
-		CashierName:    req.CashierName,
-		SpecialNotes:   req.SpecialNotes,
+		UserID:                  cashierUserID,
+		OrderType:               req.OrderType,
+		Status:                  repositories.OrderStatusPending,
+		SubtotalAmount:          subtotal,
+		VATAmount:               vatAmount,
+		TotalAmount:             totalAmount,
+		CustomerName:            req.CustomerName,
+		CustomerPhone:           req.CustomerPhone,
+		CashierName:             req.CashierName,
+		SpecialNotes:            req.SpecialNotes,
+		EstimatedCompletionTime: req.EstimatedCompletionTime,
+	}
+
+	// Set TableID only if provided (for dine-in orders)
+	if req.TableID != nil {
+		createdOrder.TableID = *req.TableID
 	}
 
 	err = s.orderRepo.Create(createdOrder)
@@ -404,16 +466,62 @@ func (s *OrderService) CreateCashierOrder(cashierUserID uint, req *CashierOrderR
 		ID:             completeOrder.ID,
 		UserID:         completeOrder.UserID,
 		TableID:        completeOrder.TableID,
+		OrderType:      completeOrder.OrderType,
 		Status:         completeOrder.Status,
 		SubtotalAmount: completeOrder.SubtotalAmount,
 		VATAmount:      completeOrder.VATAmount,
 		TotalAmount:    completeOrder.TotalAmount,
 		CustomerName:   completeOrder.CustomerName,
+		CustomerPhone:  completeOrder.CustomerPhone,
 		CashierName:    completeOrder.CashierName,
 		SpecialNotes:   completeOrder.SpecialNotes,
 		CreatedAt:      completeOrder.CreatedAt.Format("2006-01-02 15:04:05"),
 		OrderItems:     orderItemResponses,
 	}
 
+	// Add estimated completion time if present
+	if completeOrder.EstimatedCompletionTime != nil {
+		estimatedTime := completeOrder.EstimatedCompletionTime.Format("2006-01-02 15:04:05")
+		response.EstimatedCompletionTime = &estimatedTime
+	}
+
 	return response, nil
+}
+
+func (s *OrderService) validateCashierOrderRequest(req *CashierOrderRequest) error {
+	switch req.OrderType {
+	case repositories.OrderTypeDineIn:
+		if req.TableID == nil {
+			return errors.New("table_id is required for dine-in orders")
+		}
+	case repositories.OrderTypeTakeaway:
+		if req.CustomerPhone == "" {
+			return errors.New("customer_phone is required for takeaway orders")
+		}
+		// Set estimated completion time if not provided (default 30 minutes)
+		if req.EstimatedCompletionTime == nil {
+			estimatedTime := time.Now().Add(30 * time.Minute)
+			req.EstimatedCompletionTime = &estimatedTime
+		}
+	default:
+		return errors.New("invalid order type. Must be 'dine_in' or 'takeaway'")
+	}
+	return nil
+}
+
+// GetOrdersByType returns orders filtered by order type
+func (s *OrderService) GetOrdersByType(orderType repositories.OrderType, page, limit int) ([]repositories.Order, error) {
+	offset := (page - 1) * limit
+	return s.orderRepo.GetByOrderType(orderType, limit, offset)
+}
+
+// GetTakeawayOrdersReady returns all ready takeaway orders
+func (s *OrderService) GetTakeawayOrdersReady() ([]repositories.Order, error) {
+	return s.orderRepo.GetTakeawayOrdersReady()
+}
+
+// GetOrdersByStatusAndType returns orders filtered by both status and type
+func (s *OrderService) GetOrdersByStatusAndType(status repositories.OrderStatus, orderType repositories.OrderType, page, limit int) ([]repositories.Order, error) {
+	offset := (page - 1) * limit
+	return s.orderRepo.GetByStatusAndType(status, orderType, limit, offset)
 }

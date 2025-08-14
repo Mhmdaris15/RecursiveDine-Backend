@@ -578,6 +578,542 @@
 			]
 		},
 		{
+			"name": "6.5. Order Type Testing (Dine-In vs Takeaway)",
+			"item": [
+				{
+					"name": "Create Dine-In Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{customer_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"table_id\": {{table_id}},\n  \"order_type\": \"dine_in\",\n  \"special_notes\": \"Dine-in order for testing\",\n  \"items\": [\n    {\n      \"menu_item_id\": {{menu_item_id}},\n      \"quantity\": 2,\n      \"special_request\": \"Medium spice level\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/orders",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "orders"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Dine-in order created successfully\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Order has correct type\", function () {",
+									"    pm.expect(responseJson.order_type).to.eql(\"dine_in\");",
+									"});",
+									"",
+									"pm.test(\"Order has table assigned\", function () {",
+									"    pm.expect(responseJson.table_id).to.be.a('number');",
+									"});",
+									"",
+									"pm.environment.set(\"dine_in_order_id\", responseJson.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Create Takeaway Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{customer_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"order_type\": \"takeaway\",\n  \"customer_phone\": \"+6281234567890\",\n  \"special_notes\": \"Takeaway order for testing\",\n  \"items\": [\n    {\n      \"menu_item_id\": {{menu_item_id}},\n      \"quantity\": 1,\n      \"special_request\": \"Extra sauce\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/orders",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "orders"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Takeaway order created successfully\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Order has correct type\", function () {",
+									"    pm.expect(responseJson.order_type).to.eql(\"takeaway\");",
+									"});",
+									"",
+									"pm.test(\"Order has customer phone\", function () {",
+									"    pm.expect(responseJson.customer_phone).to.eql(\"+6281234567890\");",
+									"});",
+									"",
+									"pm.test(\"Order has estimated completion time\", function () {",
+									"    pm.expect(responseJson.estimated_completion_time).to.be.a('string');",
+									"});",
+									"",
+									"pm.environment.set(\"takeaway_order_id\", responseJson.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Create Cashier Takeaway Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{cashier_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"order_type\": \"takeaway\",\n  \"customer_name\": \"Walk-in Customer\",\n  \"customer_phone\": \"+6287654321098\",\n  \"cashier_name\": \"Test Cashier\",\n  \"special_notes\": \"Cashier takeaway order\",\n  \"items\": [\n    {\n      \"menu_item_id\": {{menu_item_id}},\n      \"quantity\": 3,\n      \"special_request\": \"No onions\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/cashier/orders",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "cashier", "orders"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Cashier takeaway order created successfully\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Order has correct type\", function () {",
+									"    pm.expect(responseJson.order.order_type).to.eql(\"takeaway\");",
+									"});",
+									"",
+									"pm.test(\"Order includes VAT calculation\", function () {",
+									"    pm.expect(responseJson.order.vat_amount).to.be.above(0);",
+									"    pm.expect(responseJson.order.total_amount).to.be.above(responseJson.order.subtotal_amount);",
+									"});",
+									"",
+									"pm.environment.set(\"cashier_takeaway_order_id\", responseJson.order.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Orders by Type - Dine In",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/orders/type?type=dine_in&page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "orders", "type"],
+							"query": [
+								{
+									"key": "type",
+									"value": "dine_in"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Get dine-in orders successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Returns orders array\", function () {",
+									"    pm.expect(responseJson.orders).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"All orders are dine-in type\", function () {",
+									"    responseJson.orders.forEach(order => {",
+									"        pm.expect(order.order_type).to.eql('dine_in');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Orders by Type - Takeaway",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/orders/type?type=takeaway&page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "orders", "type"],
+							"query": [
+								{
+									"key": "type",
+									"value": "takeaway"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Get takeaway orders successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Returns orders array\", function () {",
+									"    pm.expect(responseJson.orders).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"All orders are takeaway type\", function () {",
+									"    responseJson.orders.forEach(order => {",
+									"        pm.expect(order.order_type).to.eql('takeaway');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Update Takeaway Order to Ready",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"ready\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/orders/{{takeaway_order_id}}/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "orders", "{{takeaway_order_id}}", "status"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Order status updated successfully\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Ready Takeaway Orders",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/orders/takeaway/ready",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "orders", "takeaway", "ready"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Get ready takeaway orders successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Returns ready takeaway orders\", function () {",
+									"    pm.expect(responseJson.orders).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"All orders are ready takeaway\", function () {",
+									"    responseJson.orders.forEach(order => {",
+									"        pm.expect(order.order_type).to.eql('takeaway');",
+									"        pm.expect(order.status).to.eql('ready');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Orders by Status and Type Filter",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/orders/filter?status=ready&type=takeaway&page=1&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "orders", "filter"],
+							"query": [
+								{
+									"key": "status",
+									"value": "ready"
+								},
+								{
+									"key": "type",
+									"value": "takeaway"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Filter orders by status and type successful\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Returns filtered orders\", function () {",
+									"    pm.expect(responseJson.orders).to.be.an('array');",
+									"});",
+									"",
+									"pm.test(\"All orders match filter criteria\", function () {",
+									"    responseJson.orders.forEach(order => {",
+									"        pm.expect(order.order_type).to.eql('takeaway');",
+									"        pm.expect(order.status).to.eql('ready');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Test Invalid Order Type",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{customer_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"order_type\": \"invalid_type\",\n  \"special_notes\": \"This should fail\",\n  \"items\": [\n    {\n      \"menu_item_id\": {{menu_item_id}},\n      \"quantity\": 1\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/orders",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "orders"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Invalid order type rejected\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Returns appropriate error message\", function () {",
+									"    pm.expect(responseJson.error).to.include('order type');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Test Takeaway Order Missing Phone",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{customer_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"order_type\": \"takeaway\",\n  \"special_notes\": \"Missing phone number\",\n  \"items\": [\n    {\n      \"menu_item_id\": {{menu_item_id}},\n      \"quantity\": 1\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/orders",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "orders"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Takeaway order without phone rejected\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Returns phone requirement error\", function () {",
+									"    pm.expect(responseJson.error).to.include('customer_phone');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Test Dine-In Order Missing Table",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{customer_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"order_type\": \"dine_in\",\n  \"special_notes\": \"Missing table ID\",\n  \"items\": [\n    {\n      \"menu_item_id\": {{menu_item_id}},\n      \"quantity\": 1\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/orders",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "orders"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Dine-in order without table rejected\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"pm.test(\"Returns table requirement error\", function () {",
+									"    pm.expect(responseJson.error).to.include('table_id');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
 			"name": "7. Payment Processing",
 			"item": [
 				{

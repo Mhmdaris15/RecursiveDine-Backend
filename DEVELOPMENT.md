@@ -66,26 +66,26 @@ Once development environment is running:
 
 ```bash
 # Check migration status
-go run cmd/migrate/migrate.go status
+go run cmd/migrate/main.go status
 
 # Run pending migrations
-go run cmd/migrate/migrate.go up
+go run cmd/migrate/main.go up
 
 # Rollback migrations (1 step)
-go run cmd/migrate/migrate.go down 1
+go run cmd/migrate/main.go down 1
 
 # Create new migration
-go run cmd/migrate/migrate.go create add_new_table
+go run cmd/migrate/main.go create add_new_table
 
 # Reset database (DANGER - deletes all data)
-go run cmd/migrate/migrate.go reset
+go run cmd/migrate/main.go reset
 ```
 
 ### Migration Workflow
 
 1. **Create a new migration:**
    ```bash
-   go run cmd/migrate/migrate.go create add_payment_methods
+   go run cmd/migrate/main.go create add_payment_methods
    ```
    This creates: `migrations/004_add_payment_methods.sql`
 
@@ -106,12 +106,12 @@ go run cmd/migrate/migrate.go reset
 
 3. **Run the migration:**
    ```bash
-   go run cmd/migrate/migrate.go up
+   go run cmd/migrate/main.go up
    ```
 
 4. **Check status:**
    ```bash
-   go run cmd/migrate/migrate.go status
+   go run cmd/migrate/main.go status
    ```
 
 ### Example Migration Status Output
@@ -184,14 +184,14 @@ LOG_LEVEL=debug
 
 1. **Create migration:**
    ```bash
-   go run cmd/migrate/migrate.go create your_change_name
+   go run cmd/migrate/main.go create your_change_name
    ```
 
 2. **Edit the SQL file in `migrations/` folder**
 
 3. **Apply migration:**
    ```bash
-   go run cmd/migrate/migrate.go up
+   go run cmd/migrate/main.go up
    ```
 
 4. **Restart your Go app to see changes**
@@ -263,13 +263,13 @@ docker exec -it recursivedine-redis-dev redis-cli
 3. **"Migration failed"**
    ```bash
    # Check migration status
-   go run cmd/migrate/migrate.go status
+   go run cmd/migrate/main.go status
    
    # Rollback if needed
-   go run cmd/migrate/migrate.go down 1
+   go run cmd/migrate/main.go down 1
    
    # Fix migration file and retry
-   go run cmd/migrate/migrate.go up
+   go run cmd/migrate/main.go up
    ```
 
 4. **".env.dev not found"**

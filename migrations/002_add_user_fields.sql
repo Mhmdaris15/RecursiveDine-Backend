@@ -1,5 +1,5 @@
 -- Connect to the recursive_dine database
-\c recursive_dine;
+-- \c recursive_dine;
 
 -- Add name and phone fields to users table
 ALTER TABLE users 

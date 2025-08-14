@@ -64,19 +64,19 @@ You now have a **hybrid development environment** that gives you the best of bot
 
 ```bash
 # Check what migrations are available/applied
-go run cmd/migrate/migrate.go status
+go run cmd/migrate/main.go status
 
 # Apply all pending migrations
-go run cmd/migrate/migrate.go up
+go run cmd/migrate/main.go up
 
 # Create a new migration
-go run cmd/migrate/migrate.go create add_new_feature
+go run cmd/migrate/main.go create add_new_feature
 
 # Rollback migrations (if needed)
-go run cmd/migrate/migrate.go down 1
+go run cmd/migrate/main.go down 1
 
 # Reset database (DANGER - deletes all data)
-go run cmd/migrate/migrate.go reset
+go run cmd/migrate/main.go reset
 ```
 
 ### **Testing Your API**
@@ -132,7 +132,7 @@ RecursiveDine/
 ├── .env.dev                        # Development environment config
 ├── dev-setup.bat/.sh              # Setup development environment
 ├── dev-run.bat/.sh                # Run Go application locally
-├── cmd/migrate/migrate.go          # Database migration tool
+├── cmd/migrate/main.go             # Database migration tool
 ├── DEVELOPMENT.md                  # This guide
 ├── CASHIER_IMPLEMENTATION.md       # Cashier system details
 └── RecursiveDine_E2E_Testing.postman_collection.json  # Tests
@@ -172,7 +172,7 @@ RecursiveDine/
    - Verify error logging
 
 3. **Add New Features**:
-   - Create migrations: `go run cmd/migrate/migrate.go create feature_name`
+   - Create migrations: `go run cmd/migrate/main.go create feature_name`
    - Edit code and restart instantly
    - No Docker rebuilds needed!
 

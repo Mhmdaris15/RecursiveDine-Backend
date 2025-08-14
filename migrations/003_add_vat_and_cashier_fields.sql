@@ -1,5 +1,5 @@
 -- Connect to the recursive_dine database
-\c recursive_dine;
+-- \c recursive_dine;
 
 -- Add VAT and cashier information to orders table
 ALTER TABLE orders ADD COLUMN subtotal_amount DECIMAL(10,2) NOT NULL DEFAULT 0;

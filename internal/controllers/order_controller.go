@@ -88,7 +88,7 @@ func (ctrl *OrderController) GetOrder(c *gin.Context) {
 	// Check if user owns this order or has staff/admin role
 	userID, _ := c.Get("user_id")
 	userRole, _ := c.Get("user_role")
-	
+
 	if order.UserID != userID.(uint) && userRole != "staff" && userRole != "admin" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
@@ -117,11 +117,11 @@ func (ctrl *OrderController) GetOrders(c *gin.Context) {
 	}
 
 	userRole, _ := c.Get("user_role")
-	
+
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	
+
 	// Validate pagination
 	if page < 1 {
 		page = 1
@@ -238,7 +238,7 @@ func (ctrl *OrderController) GetOrdersByStatus(c *gin.Context) {
 	// Parse pagination parameters
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	
+
 	// Validate pagination
 	if page < 1 {
 		page = 1
@@ -281,18 +281,173 @@ func (ctrl *OrderController) GetOrdersByStatus(c *gin.Context) {
 	})
 }
 
-// @Summary Create cashier order
-// @Description Create an order through cashier with customer name, VAT calculation
-// @Tags cashier
+// @Summary Get orders by order type
+// @Description Get all orders filtered by order type (dine_in or takeaway)
+// @Tags orders
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param request body services.CashierOrderRequest true "Cashier order details"
-// @Success 201 {object} services.OrderResponse
+// @Param type query string true "Order type (dine_in or takeaway)"
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Items per page (default: 10)"
+// @Success 200 {array} repositories.Order
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
+// @Router /orders/type [get]
+func (ctrl *OrderController) GetOrdersByType(c *gin.Context) {
+	typeParam := c.Query("type")
+	if typeParam == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Type parameter is required"})
+		return
+	}
+
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	// Validate pagination
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	// Validate order type
+	var orderType repositories.OrderType
+	switch typeParam {
+	case "dine_in":
+		orderType = repositories.OrderTypeDineIn
+	case "takeaway":
+		orderType = repositories.OrderTypeTakeaway
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order type. Must be 'dine_in' or 'takeaway'"})
+		return
+	}
+
+	orders, err := ctrl.orderService.GetOrdersByType(orderType, page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"orders": orders,
+		"type":   typeParam,
+		"page":   page,
+		"limit":  limit,
+	})
+}
+
+// @Summary Get takeaway orders ready for pickup
+// @Description Get all takeaway orders that are ready for customer pickup
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} repositories.Order
+// @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /cashier/orders [post]
+// @Router /orders/takeaway/ready [get]
+func (ctrl *OrderController) GetTakeawayOrdersReady(c *gin.Context) {
+	orders, err := ctrl.orderService.GetTakeawayOrdersReady()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"orders": orders,
+		"count":  len(orders),
+	})
+}
+
+// @Summary Get orders by status and type
+// @Description Get all orders filtered by both status and order type
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param status query string true "Order status"
+// @Param type query string true "Order type (dine_in or takeaway)"
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Items per page (default: 10)"
+// @Success 200 {array} repositories.Order
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Router /orders/filter [get]
+func (ctrl *OrderController) GetOrdersByStatusAndType(c *gin.Context) {
+	statusParam := c.Query("status")
+	typeParam := c.Query("type")
+
+	if statusParam == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Status parameter is required"})
+		return
+	}
+
+	if typeParam == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Type parameter is required"})
+		return
+	}
+
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	// Validate pagination
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	// Validate status
+	var status repositories.OrderStatus
+	switch statusParam {
+	case "pending":
+		status = repositories.OrderStatusPending
+	case "confirmed":
+		status = repositories.OrderStatusConfirmed
+	case "preparing":
+		status = repositories.OrderStatusPreparing
+	case "ready":
+		status = repositories.OrderStatusReady
+	case "served":
+		status = repositories.OrderStatusServed
+	case "cancelled":
+		status = repositories.OrderStatusCancelled
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status"})
+		return
+	}
+
+	// Validate order type
+	var orderType repositories.OrderType
+	switch typeParam {
+	case "dine_in":
+		orderType = repositories.OrderTypeDineIn
+	case "takeaway":
+		orderType = repositories.OrderTypeTakeaway
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid order type. Must be 'dine_in' or 'takeaway'"})
+		return
+	}
+
+	orders, err := ctrl.orderService.GetOrdersByStatusAndType(status, orderType, page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"orders": orders,
+		"status": statusParam,
+		"type":   typeParam,
+		"page":   page,
+		"limit":  limit,
+	})
+}
 func (oc *OrderController) CreateCashierOrder(c *gin.Context) {
 	var request services.CashierOrderRequest
 	if err := c.ShouldBindJSON(&request); err != nil {

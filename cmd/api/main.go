@@ -239,6 +239,9 @@ func setupRouter(cfg *config.Config, authController *controllers.AuthController,
 			orders.POST("", orderController.CreateOrder)
 			orders.GET("/:id", orderController.GetOrder)
 			orders.GET("", orderController.GetOrders)
+			orders.GET("/type", orderController.GetOrdersByType)
+			orders.GET("/takeaway/ready", orderController.GetTakeawayOrdersReady)
+			orders.GET("/filter", orderController.GetOrdersByStatusAndType)
 			orders.PATCH("/:id/status", middleware.RoleMiddleware("staff", "admin"), orderController.UpdateOrderStatus)
 		}
 
